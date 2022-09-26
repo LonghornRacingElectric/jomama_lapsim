@@ -15,17 +15,19 @@ global r_max accel grip deccel lateral cornering gear shift_points...
     top_speed r_min path_boundaries tire_radius shift_time...
     powertrainpackage track_width path_boundaries_ax
 
-
-r_max = max(radii);
-top_speed = V;
+tw = 48/12;
+r_max = 150;
+top_speed = 70;
 VMAX = top_speed;
 
 % make the rest of your functions for the GGV diagram
 % braking as a function of speed
-deccel = csaps(velocity,A_X);
+deccel = 1;
 velocity = 15:5:130;
 % lateral g's as a function of velocity
-lateral = csaps(velocity_y,lateralg);
+lateral = 1;
+velocity_y = [10, 15, 20];
+lateralg = [1, 1, 1];
 radii = velocity_y.^2./lateralg/32.2;
 % max velocity as a function of instantaneous turn radius
 cornering = csaps(radii,velocity_y);

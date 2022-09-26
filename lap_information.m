@@ -84,8 +84,8 @@ for i = 1:1:length(segment) % for each track segment
         vmax = VMAX;
     end
     % find acceleration capabilities for your current speed
-    AX = fnval(accel,vel);
-    AY = fnval(lateral,vel);
+    AX = 1;
+    AY = 1;
     dd = d/interval;
     % now, for each little interval within the larger segment:
     for j = 1:1:interval
@@ -172,8 +172,8 @@ for i = length(segment):-1:1
     if vmax < 0
         vmax = VMAX;
     end
-    AX = fnval(deccel,vel);
-    AY = fnval(lateral,vel);
+    AX = 1;
+    AY = 1;
     dd = d/interval;
     for j = 1:1:interval
         count = count-1;
@@ -226,8 +226,8 @@ for i = 1:1:length(segment)
     if vmax < 0
         vmax = VMAX;
     end
-    AX = fnval(accel,vel);
-    AY = fnval(lateral,vel);
+    AX = 1;
+    AY = 1;
     dd = d/interval;
     for j = 1:1:interval
         count = count+1;
