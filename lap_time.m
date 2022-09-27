@@ -1,5 +1,5 @@
 function [Time] = lap_time(path_positions)
-global path_boundaries r_min r_max cornering accel grip deccel lateral...
+global path_boundaries r_min r_max cornering accel deccel lateral...
     shift_points top_speed shift_time
 interval = 5;
 sections = 3000;
@@ -44,47 +44,7 @@ for i = 1:length(RT)
     y2(i) = track_points(2,i+2);
     dist(i) = sqrt((x1(i)-x2(i))^2+(y2(i)-y1(i))^2);
 end
-%%
-% initiate reverse sim
-% count = length(segment)*interval+1;
-%     v = 20;
-%     vel = v;
-% for i = length(segment):-1:1
-%     d = dist(i);
-% 
-%     r = RT(i);
-% 
-% 
-%     vmax = min(116,fnval(cornering,r));
-%     if vmax < 0
-%         vmax = VMAX;
-%     end
-%     AX = fnval(deccel,vel);
-%     AY = fnval(lateral,vel);
-%     dd = d/interval;
-%     for j = 1:1:interval
-%         count = count-1;
-%         ay_r(count) = vel^2/(r*32.2);
-%         if vel < vmax
-%             ax_r(count) = AX*(1-(min(AY,ay_r(count))/AY)^2);
-%             tt = roots([0.5*32.2*ax_r(count) vel -dd]);
-%             dt_r(count) = max(tt);
-%             dv = 32.2*ax_r(count)*dt_r(count);
-%             dvmax = vmax-vel;
-%             dv_r(count) = min(dv,dvmax);
-%             v_r(count) = vel+dv_r(count); 
-%             vel = v_r(count);
-%         else
-%             dt_r(count) = dd/vel;
-%             ax_r(count) = 0;
-%             v_r(count) = vel;
-%             dv_r(count) = 0;
-%             vel = vmax;
-%         end
-%     end
-% 
-%     
-% end
+
 %% Initiate forward sim
 
 count = 0;
