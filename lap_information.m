@@ -34,11 +34,13 @@ path_length = arclength(vehicle_path(1,:),vehicle_path(2,:));
 %% Traverse the track
 track_points = vehicle_path;
 track_points = [track_points(:,length(vehicle_path)-2) track_points(:,1:end-1)];
+writematrix(transpose(track_points),'M.csv') 
 [LT,RT,KT] = curvature(track_points');
 KT = KT(:,2);
 KT = KT(~isnan(RT));
 RT = RT(~isnan(RT));
 RT = RT(~isnan(RT));
+
 % for each point along the track, find the maximum theoretical speed
 % possible for that specific point, as well as the incremental distance
 % travelled
@@ -82,6 +84,7 @@ for i = 1:1:length(segment) % for each track segment
             % speed,
             % find potential acceleration available:
             ax_f(count) = AX*(1-(min(AY,ay_f(count))/AY)^2);
+            %disp([0.5*32.2*ax_f(count) vel -dd])
             tt = roots([0.5*32.2*ax_f(count) vel -dd]);
             % accelerate accoding to that capacity, update speed and
             % position accordingly
@@ -135,6 +138,7 @@ for i = length(segment):-1:1
         ay_r(count) = vel^2/(r*32.2);
         if vel < vmax
             ax_r(count) = AX*(1-(min(AY,ay_r(count))/AY)^2);
+            %disp(ax_r(count))
             tt = roots([0.5*32.2*ax_r(count) vel -dd]);
             dt_r(count) = max(tt);
             dv = 32.2*ax_r(count)*dt_r(count);
