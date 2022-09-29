@@ -10,9 +10,8 @@ def main():
 
     ### Example: Sweeping! ###
     
-    cg_heights = [12,13,14]
-    results_df = pd.DataFrame(columns=["cg_height","points", "endurance_time"])
-
+    # cg_heights = [12,13,14]
+    # results_df = pd.DataFrame(columns=["cg_height","points", "endurance_time"])
     # for index, cg_height in enumerate(cg_heights):
     #     easy_driver.params.cg_height = cg_height
     #     easy_driver.regenerate_GGV()
@@ -23,11 +22,10 @@ def main():
 
     #     _, points, times = engine.Competition(endurance_track, autocross_track, easy_driver).run()
     #     results_df.loc[index] = [cg_height, points, times[0]]
-
     # results_df.to_csv("results/cg_height_sweep-easy_driver.csv")
 
 
-    ### Example: One off simulations ###
+    ### Example: One-off simulations ###
 
     results, points, times = engine.Competition(endurance_track, autocross_track, easy_driver).run()
     results[0].to_csv("results/endurance_michigan_2019-easy_driver.csv")
