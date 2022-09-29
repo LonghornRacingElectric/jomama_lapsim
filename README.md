@@ -55,7 +55,7 @@ TODO
         (explanation on how to do this here: https://towardsdatascience.com/installing-jupyter-notebook-support-in-visual-studio-code-91887d644c5d)
 
 
-    6) Running the MMM Engine
+    6) Running the lapsim Engine
 
         In your IDE or command line, run the main.py. 
         This will generate the data output from the sweep in this folder: results/{name}.csv
