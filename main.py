@@ -2,32 +2,33 @@ import pandas as pd
 import numpy as np
 
 def main():
-    easy_driver = Racecar("ggv/easy_driver_GGV.csv", 48/12)
+    easy_driver = Racecar("TEMP", 48/12)
 
-    endurance_track = Track("endurance_michigan_2019.csv")
-    autocross_track = None #Track("autocross_michigan_2019.csv")
+    endurance_track = Track("endurance_michigan_2019", 120, 100)
+    autocross_track = None #Track("autocross_michigan_2019.csv", best_time = 120)
     
-    endurance_track.generate_racing_line(easy_driver.front_trackwidth)
+    # If a new racing line is needed (i.e. trackwidth changes), enable these lines
+    #endurance_track.generate_racing_line(easy_driver.front_trackwidth)
     #autocross_track.generate_racing_line(easy_driver.front_trackwidth)
 
     results, points = Competition(endurance_track, autocross_track, easy_driver).run()
 
-    results[0].to_csv("endurance_michigan_2019-easy_driver.csv")
-    #results[1].to_csv("endurance_michigan_2019-easy_driver.csv")
+    results[0].to_csv("results/endurance_michigan_2019-easy_driver.csv")
+    #results[1].to_csv("results/endurance_michigan_2019-easy_driver.csv")
 
-    print("Points")
-
+    print(f"Points: {points}")
 
 class Competition:
     def __init__(self, endurance, autocross, racecar):
-        self.endurance = endurance
-        self.autocross = autocross
         self.racecar = racecar
-        self.skidpad = None
-        self.acceleration = None
+
+        self.endurance_sim = Simulation(endurance, self.racecar)
+        self.autocross_sim = autocross
+        self.skidpad_sim = None
+        self.acceleration_sim = None
 
     def run(self):
-        result_endurance, time_e = Simulation(self.endurance, self.racecar).run()
+        result_endurance, time_e = self.endurance_sim.run()
         results_autocross, time_ax = None, None #Simulation(self.autocross, self.racecar).run()
         results_skidpad, time_s = None, None #Simulation(self.skidpad, self.racecar).run()
         results_acceleration, time_a = None, None #Simulation(self.acceleration, self.racecar).run()
@@ -37,6 +38,8 @@ class Competition:
         return [result_endurance, results_autocross, results_skidpad, results_acceleration], points
 
     def points(self, time_e, time_ax, time_s, time_a):
+        best = self.endurance_sim.track.best_time
+        worst = self.endurance_sim.track.worst_time
         return 400
 
 class Simulation:
@@ -44,16 +47,15 @@ class Simulation:
         self.track = track
         self.car = car
 
-    def run(self):
-        # traverse track
-        track_points = self.track.path_points() # TODO
-        # track_points = pd.DataFrame([track_points[:][len(track_points)-3], *track_points[:][:len(track_points)-2]],
-        #                             columns = ["x", "y", "z"] )
-        curvature(track_points)
+        self.time = 0
+        self.results = None
 
-        # find maximum speed & dist traveled for each point on track
+    def run(self):
+        # get turn radii from raceline points
+        track_points = curvature(self.track.path_points())
+
+        # find dist traveled for each point on track
         track_points["dist"] = 0
-        track_points["t"] = 0
         previous_row = track_points.iloc[1]
         for i, row in track_points.iloc[1:].iterrows():
             track_points.loc[i,"dist"] = ((row["x"] - previous_row["x"])**2 + (row["y"] - previous_row["y"])**2)**0.5
@@ -64,17 +66,15 @@ class Simulation:
         track_points = track_points.drop(0)
         track_points = track_points.drop(1)
 
-        track_points.to_csv("temp.csv")
-
-        initial_forward_sim_df = self.__forward_sim(track_points.copy(deep = True), 20) # TODO: starting speed?
+        initial_forward_sim_df = self.__forward_sim(track_points.copy(deep = True), 20, False) # TODO: starting speed?
         starting_vel = initial_forward_sim_df["vel"].iloc[initial_forward_sim_df.shape[1]]
-        reverse_sim_df = self.__reverse_sim(track_points.copy(deep = True), starting_vel)
-        forward_sim_df = self.__forward_sim(track_points.copy(deep = True), starting_vel)
+        reverse_sim_df = self.__forward_sim(track_points.copy(deep = True), starting_vel, True)
+        forward_sim_df = self.__forward_sim(track_points.copy(deep = True), starting_vel, False)
     
         ### COMBINE RESULTS
-        time = 0
-        rows = []
+        time, rows = 0, []
         columns = [*reverse_sim_df.columns, "time"]
+
         for index, row in track_points.iterrows():
             reverse_row = reverse_sim_df.loc[index]
             forward_row = forward_sim_df.loc[index]
@@ -83,75 +83,44 @@ class Simulation:
                 rows.append(np.array([*forward_row, time]))
             else:
                 time += reverse_row.loc["delta_t"]
+                reverse_row.loc["ax"]*=-1
                 rows.append(np.array([*reverse_row, time]))
         
-        results_df = pd.DataFrame(rows, columns=columns)
+        self.results = pd.DataFrame(rows, columns=columns)
+        self.time = self.results["time"].max()
+        return self.results, self.time
 
-        return results_df, self.event_time(results_df)
-
-    def __forward_sim(self, df, starting_vel):
+    def __forward_sim(self, df, starting_vel, is_reverse):
+        accel_func = self.car.deccel if is_reverse else self.car.accel
+        gravity = 32.2
         vel = starting_vel
         for x in ["delta_t", "delta_vel", "vel", "ay", "ax"]:
             df[x] = 0
 
-        for i, row in df.iterrows():
+        for i, row in (df[::-1] if is_reverse else df).iterrows():
             # max speed through segment
             vmax = min(self.car.max_vel, self.car.max_vel_corner(row["R"]))
-            vmax = self.car.max_vel if vmax < 0 else vmax
 
             AY = self.car.lateral(self.car.max_vel) # accel capabilities
-            df.loc[i,"ay"] = vel**2/row["R"]/32.2 # actual accel
+            df.loc[i,"ay"] = min((vel*60**2/5280)**2/row["R"]/gravity, AY) # actual accel
             if vel < vmax:
-                df.loc[i,"ax"] = self.car.accel(vel, min(AY, df.loc[i,"ay"]))
-                df.loc[i,"delta_t"] = max(np.roots([0.5*32.2*df.loc[i,"ax"], vel, -row["dist"]]))
-                df.loc[i,"delta_vel"] = min(32.2*df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
+                df.loc[i,"ax"] = accel_func(vel, df.loc[i,"ay"])
+                df.loc[i,"delta_t"] = max(np.roots([0.5*gravity*df.loc[i,"ax"], vel, -row["dist"]]))
+                df.loc[i,"delta_vel"] = min(gravity*df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
                 df.loc[i,"vel"] = vel + df.loc[i,"delta_vel"]
                 vel = df.loc[i,"vel"]
             else:
-               # car maxed out, no more accel
+                # car maxed out, no more accel
                 vel = vmax
-                df.loc[i,"delta_t"] = row["dist"]/vel
-                df.loc[i,"ax"] = 0
-                df.loc[i,"delta_vel"] = 0
                 df.loc[i,"vel"] = vel
-        return df
-
-    def __reverse_sim(self, df, starting_vel):
-        vel = starting_vel
-        for x in ["delta_t", "delta_vel", "vel", "ay", "ax"]:
-            df[x] = 0
-
-        for i, row in df[::-1].iterrows():
-            # max speed through segment
-            vmax = min(self.car.max_vel, self.car.max_vel_corner(row["R"]))
-            vmax = self.car.max_vel if vmax < 0 else vmax
-
-            AY = self.car.lateral(self.car.max_vel) # accel capabilities
-            df.loc[i,"ay"] = vel**2/row["R"]/32.2 # actual accel
-
-            if vel < vmax:
-                df.loc[i,"ax"] = self.car.deccel(vel, min(AY, df.loc[i,"ay"]))
-                df.loc[i,"delta_t"] = max(np.roots([0.5*32.2*df.loc[i,"ax"], vel, -row["dist"]]))
-                df.loc[i,"delta_vel"] = min(32.2*df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
-                df.loc[i,"vel"] = vel + df.loc[i,"delta_vel"]
-                vel = df.loc[i,"vel"]
-            else:
-               # car maxed out, no more deccel
-                vel = vmax
                 df.loc[i,"delta_t"] = row["dist"]/vel
-                df.loc[i,"ax"] = 0
-                df.loc[i,"delta_vel"] = 0
-                df.loc[i,"vel"] = vel 
+                df.loc[i,"ax"], df.loc[i,"delta_vel"] = 0, 0
         return df
-
-    def event_time(self, df):
-        return df["t"].max()
 
 def curvature(track_df):
     # radius of curvature and curvature vector for 2D or 3D curve
     # X - x,y column array
     # [L, R, k] = Cumulative arc length, radius of curvature, curvature vector
-    N = track_df.shape[0]
     track_df["L"], track_df["R"], track_df["kx"], track_df["ky"], track_df["kz"] = 0, 0, 0, 0, 0
     previous_row = track_df.iloc[-1]
     previous_coords_row = track_df.iloc[-1][["x", "y", "z"]]
@@ -160,12 +129,13 @@ def curvature(track_df):
         track_df.loc[i,"R"], _, k = circumcenter(coords_row, previous_coords_row, track_df.iloc[i+1, :][["x", "y", "z"]])
         track_df.loc[i,"kx"], track_df.loc[i,"ky"], track_df.loc[i,"kz"] = k
         track_df.loc[i,"L"] = previous_row["L"] + np.linalg.norm(coords_row - previous_coords_row)
-        previous_row = row
-        previous_coords_row = coords_row
-
+        previous_row, previous_coords_row = row, coords_row
+    
+    N = track_df.shape[0]
     track_df.loc[N-1,"R"], _, k = circumcenter(previous_coords_row, track_df[["x", "y", "z"]].iloc[N-1, :], track_df.iloc[0, :][["x", "y", "z"]])
     track_df.loc[N-1,"kx"], track_df.loc[N-1,"ky"], track_df.loc[N-1,"kz"] = k
     track_df.loc[N-1,"L"] = track_df["L"].iloc[N-2] + np.linalg.norm(track_df[["x", "y", "z"]].iloc[N-1, :] - previous_coords_row)
+    return track_df
 
 def circumcenter(A,B,C):
     # center and radius of the circumscribed circle for the triangle ABC
@@ -183,11 +153,12 @@ def circumcenter(A,B,C):
     k = G if R == 0 else G/R**2
     return R, M, k
 
-
 class Track:
-    def __init__(self, file_name, load_cached_racing_line = True):
+    def __init__(self, file_name, best_time, worst_time, load_cached_racing_line = True):
         #self.cones = pd.read_csv("tracks/" + file_name)
-        self.racing_line = pd.read_csv("racing_lines/" + file_name) if load_cached_racing_line else None
+        self.racing_line = pd.read_csv("racing_lines/" + file_name + "-racing_line.csv") if load_cached_racing_line else None
+        self.best_time = best_time
+        self.worst_time = worst_time
 
     def generate_racing_line(self, ggv):
         pass # TODO: Robert?
@@ -202,10 +173,11 @@ class Racecar:
         self.max_vel = 70
 
     def accel(self, vel, lateral = 0):
-        return (1 - lateral**2)**0.5
+        accel_max = 0.5
+        return (accel_max**2 - lateral**2*accel_max**2)**0.5
 
     def deccel(self, vel, lateral = 0):
-        return (1 - lateral**2)**0.5
+        return (1**2 - lateral**2)**0.5
 
     def lateral(self, vel):
         return 1
