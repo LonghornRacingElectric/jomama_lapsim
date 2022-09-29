@@ -14,7 +14,9 @@ class Competition:
         result_endurance, time_e = self.endurance_sim.run()
         print("Running Autocross Sim")
         results_autocross, time_ax = self.autocross_sim.run()
+        print("Running Skidpad Sim")
         results_skidpad, time_s = None, None #Simulation(self.skidpad, self.racecar).run()
+        print("Running Acceleration Sim")
         results_acceleration, time_a = None, None #Simulation(self.acceleration, self.racecar).run()
         
         times = [time_e, time_ax, time_s, time_a]
