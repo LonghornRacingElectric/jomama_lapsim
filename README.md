@@ -1,5 +1,5 @@
 # Optimum-Mindstorm
-Lap Simulation package for CUFSAE
+Lap Simulation package for LHRe FSAE
 
 # Documentation
 TODO
