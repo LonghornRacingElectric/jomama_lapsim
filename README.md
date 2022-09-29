@@ -4,7 +4,7 @@ Lap Simulation package for CUFSAE
 # Documentation
 TODO
 
-# -Installation and Setup-
+# Installation and Setup
 
     1) Git bash setup
 
