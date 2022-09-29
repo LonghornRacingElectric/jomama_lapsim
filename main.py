@@ -170,22 +170,23 @@ class Racecar:
     def __init__(self, ggv_file, front_trackwidth):
         #self.file = pd.read_csv(ggv_file) #TODO!
         self.front_trackwidth = front_trackwidth
-        self.max_vel = 70
+        self.max_vel = 65
 
     def accel(self, vel, lateral = 0):
-        accel_max = 0.5
-        return (accel_max**2 - lateral**2*accel_max**2)**0.5
+        accel_max = 0.75
+        return (accel_max**2 - lateral**2*accel_max**2/self.lateral(0)**2)**0.5
 
     def deccel(self, vel, lateral = 0):
-        return (1**2 - lateral**2)**0.5
+        deccel_max = 1.7
+        return (deccel_max**2 - lateral**2*deccel_max**2/self.lateral(0)**2)**0.5
 
     def lateral(self, vel):
-        return 1
+        return 2
 
     def max_vel_corner(self, radius):
         if radius > 1000: # TODO
             return self.max_vel
-        vel = (1 * 32.2 * radius) ** 0.5 * 5280/60**2
+        vel = (2 * 32.2 * radius) ** 0.5 * 5280/60**2
         return vel
     
 
