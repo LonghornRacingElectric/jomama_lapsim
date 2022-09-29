@@ -1,9 +1,10 @@
 import pandas as pd
 
 class Track:
-    def __init__(self, file_name, best_time, worst_time, load_cached_racing_line = True):
+    def __init__(self, file_name = None, best_time = None, worst_time = None, load_cached_racing_line = True):
         #self.cones = pd.read_csv("tracks/" + file_name)
-        self.racing_line = pd.read_csv("racing_lines/" + file_name + "-racing_line.csv") if load_cached_racing_line else None
+        if file_name and load_cached_racing_line:
+            self.racing_line = pd.read_csv("racing_lines/" + file_name + "-racing_line.csv")
         self.best_time = best_time
         self.worst_time = worst_time
 

@@ -5,8 +5,10 @@ import engine
 def main():
     easy_driver = engine.Racecar("")
 
-    endurance_track = engine.Track("endurance_michigan_2019", 120, 100)
+    endurance_track = engine.Track("endurance_michigan_2019", 1, 1)
     autocross_track = engine.Track("autocross_michigan_2019", 1, 1)
+    skidpad_times = [1, 1]
+    accel_times = [1, 1]
 
     ### Example: Sweeping! ###
     
@@ -27,9 +29,11 @@ def main():
 
     ### Example: One-off simulations ###
 
-    results, points, times = engine.Competition(endurance_track, autocross_track, easy_driver).run()
+    results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,
+                             skidpad_times, accel_times).run()
     results[0].to_csv("results/endurance_michigan_2019-easy_driver.csv")
     results[1].to_csv("results/autocross_michigan_2019-easy_driver.csv")
+    print(times)
     
 
 if __name__ == "__main__":

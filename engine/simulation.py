@@ -2,14 +2,18 @@ import numpy as np
 import pandas as pd
 
 class Simulation:
-    def __init__(self, track, car):
+    def __init__(self, car, track, is_skidpad = False):
         self.track = track
         self.car = car
+        self.is_skidpad = is_skidpad
 
         self.time = 0
         self.results = None
 
     def run(self):
+        if self.is_skidpad:
+            return None, self.__skidpad_sim()
+
         # get turn radii from raceline points
         track_points = curvature(self.track.path_points())
 
@@ -47,6 +51,12 @@ class Simulation:
         self.results = pd.DataFrame(rows, columns=[*reverse_sim_df.columns, "time"])
         self.time = self.results["time"].max()
         return self.results, self.time
+    
+    def __skidpad_sim(self):
+        path_radius = 25 + self.car.params.front_trackwidth/2+0.5
+        speed = self.car.max_vel_corner(path_radius) # speed to possible to take
+        time = path_radius * 2 * np.pi / (speed * 5280/60**2)
+        return time
 
     def __forward_sim(self, df, starting_vel, is_reverse):
         accel_func = self.car.deccel if is_reverse else self.car.accel
@@ -56,11 +66,10 @@ class Simulation:
             df[x] = 0
 
         for i, row in (df[::-1] if is_reverse else df).iterrows():
-            # max speed through segment
             vmax = min(self.car.max_vel, self.car.max_vel_corner(row["R"]))
 
             AY = self.car.lateral(self.car.max_vel) # accel capabilities
-            df.loc[i,"ay"] = min((vel*60**2/5280)**2/row["R"]/gravity, AY) # actual accel
+            df.loc[i,"ay"] = min((vel*60**2/5280)**2/row["R"]/gravity, AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
                 df.loc[i,"ax"] = accel_func(vel, df.loc[i,"ay"])
                 df.loc[i,"delta_t"] = max(np.roots([0.5*gravity*df.loc[i,"ax"], vel, -row["dist"]]))

@@ -5,6 +5,7 @@ class Racecar:
         #self.file = pd.read_csv(ggv_file) #TODO!
         self.max_vel = 65
         self.params = types.SimpleNamespace()
+        self.params.front_trackwidth = 48/12
 
     def regenerate_GGV(self):
         pass
@@ -21,7 +22,7 @@ class Racecar:
         return 1.8
 
     def max_vel_corner(self, radius):
-        if radius > 1000: # TODO
+        if radius > 1000 or radius == 0: # TODO
             return self.max_vel
         vel = (self.lateral(0) * 32.2 * radius) ** 0.5 * 5280/60**2
         return vel

@@ -1,13 +1,16 @@
 import engine
 
 class Competition:
-    def __init__(self, endurance, autocross, racecar):
+    def __init__(self, racecar, endurance, autocross, skidpad_times = None, accel_times = None):
         self.racecar = racecar
 
-        self.endurance_sim = engine.Simulation(endurance, self.racecar)
-        self.autocross_sim = engine.Simulation(autocross, self.racecar)
-        self.skidpad_sim = None
-        self.acceleration_sim = None
+        accel_track = engine.Track("Acceleration", best_time = accel_times[0], worst_time = accel_times[1])
+        skidpad_track = engine.Track(best_time = skidpad_times[0], worst_time = skidpad_times[1])
+        
+        self.endurance_sim = engine.Simulation(self.racecar, endurance)
+        self.autocross_sim = engine.Simulation(self.racecar, autocross)
+        self.skidpad_sim = engine.Simulation(self.racecar, skidpad_track, is_skidpad = True)
+        self.acceleration_sim = engine.Simulation(self.racecar, accel_track)
 
     def run(self):
         print("Running Endurance Sim")
@@ -15,9 +18,9 @@ class Competition:
         print("Running Autocross Sim")
         results_autocross, time_ax = self.autocross_sim.run()
         print("Running Skidpad Sim")
-        results_skidpad, time_s = None, None #Simulation(self.skidpad, self.racecar).run()
+        results_skidpad, time_s = self.skidpad_sim.run()
         print("Running Acceleration Sim")
-        results_acceleration, time_a = None, None #Simulation(self.acceleration, self.racecar).run()
+        results_acceleration, time_a = self.acceleration_sim.run()
         
         times = [time_e, time_ax, time_s, time_a]
         points = self.points(*times)
