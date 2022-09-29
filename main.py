@@ -177,16 +177,16 @@ class Racecar:
         return (accel_max**2 - lateral**2*accel_max**2/self.lateral(0)**2)**0.5
 
     def deccel(self, vel, lateral = 0):
-        deccel_max = 1.7
+        deccel_max = 2
         return (deccel_max**2 - lateral**2*deccel_max**2/self.lateral(0)**2)**0.5
 
     def lateral(self, vel):
-        return 2
+        return 1.8
 
     def max_vel_corner(self, radius):
         if radius > 1000: # TODO
             return self.max_vel
-        vel = (2 * 32.2 * radius) ** 0.5 * 5280/60**2
+        vel = (self.lateral(0) * 32.2 * radius) ** 0.5 * 5280/60**2
         return vel
     
 
