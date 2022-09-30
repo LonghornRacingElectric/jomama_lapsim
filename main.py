@@ -31,8 +31,8 @@ def main():
 
     results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,
                              skidpad_times, accel_times).run()
-    results[0].to_csv("results/endurance_michigan_2019-easy_driver.csv")
-    results[1].to_csv("results/autocross_michigan_2019-easy_driver.csv")
+    #esults[0].to_csv("results/endurance_michigan_2019-easy_driver.csv")
+    #results[1].to_csv("results/autocross_michigan_2019-easy_driver.csv")
     print(times)
     
 
