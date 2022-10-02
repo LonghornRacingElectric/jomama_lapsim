@@ -5,10 +5,10 @@ import engine
 def main():
     easy_driver = engine.Racecar("")
 
-    endurance_track = engine.Track("endurance_michigan_2019", 1681.963, 2467.84635)
-    autocross_track = engine.Track("autocross_michigan_2019", 63.236, 91.6922)
-    skidpad_times = [5.0497, 6.1704]
-    accel_times = [4.004, 6.006]
+    endurance_track = engine.Track("endurance_michigan_2019", 1681.963)
+    autocross_track = engine.Track("autocross_michigan_2019", 63.236)
+    skidpad_times = 5.0497
+    accel_times = 4.004
 
     ### Example: Sweeping! ###
     

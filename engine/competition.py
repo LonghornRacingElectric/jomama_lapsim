@@ -1,12 +1,11 @@
-from matplotlib.cbook import safe_masked_invalid
 import engine
 
 class Competition:
     def __init__(self, racecar, endurance, autocross, skidpad_times = None, accel_times = None):
         self.racecar = racecar
 
-        accel_track = engine.Track("Acceleration", best_time = accel_times[0], worst_time = accel_times[1])
-        skidpad_track = engine.Track(best_time = skidpad_times[0], worst_time = skidpad_times[1])
+        accel_track = engine.Track("Acceleration", best_time = accel_times)
+        skidpad_track = engine.Track(best_time = skidpad_times)
         
         self.endurance_sim = engine.Simulation(self.racecar, endurance)
         self.autocross_sim = engine.Simulation(self.racecar, autocross)
