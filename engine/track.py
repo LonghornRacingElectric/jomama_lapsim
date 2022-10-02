@@ -6,7 +6,6 @@ class Track:
         if file_name and load_cached_racing_line:
             self.racing_line = pd.read_csv("racing_lines/" + file_name + "-racing_line.csv")
         self.best_time = best_time
-        self.worst_time = worst_time
 
     def regenerate_racing_line(self, ggv):
         pass # TODO: Robert?
