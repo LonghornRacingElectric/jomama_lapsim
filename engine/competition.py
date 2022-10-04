@@ -28,5 +28,7 @@ class Competition:
         return [result_endurance, results_autocross, results_skidpad, results_acceleration], points, times
 
     def points(self, time_e, time_ax, time_s, time_a):
+        self.endurance_sim.track.best_time
+        self.endurance_sim.track.worst_time
         # TODO
         return 400
