@@ -1,15 +1,9 @@
-import types
+import magic_moment_method
 
 class Racecar:
-    def __init__(self, param_file):
+    def __init__(self, racecar):
         #self.file = pd.read_csv(ggv_file) #TODO!
-        self.max_vel = 29 # m / s
-        self.params = types.SimpleNamespace()
-        self.params.front_trackwidth = 1.2192
-        self.params.temp_accel_max = 1.2
-        self.params.temp_deccel_max = 1.8
-        self.params.temp_lateral_max = 1.75
-
+        self.params = racecar
 
     def regenerate_GGV(self):
         pass
@@ -27,6 +21,6 @@ class Racecar:
 
     def max_vel_corner(self, radius):
         if radius > 1000 or radius == 0: # TODO
-            return self.max_vel
+            return self.params.max_vel
         vel = (self.lateral(0) * 9.81 * radius) ** 0.5
         return vel

@@ -1,7 +1,0 @@
-matplotlib-label-lines
-matplotlib
-pandas
-numpy
-scipy
-pytest
-jupyter

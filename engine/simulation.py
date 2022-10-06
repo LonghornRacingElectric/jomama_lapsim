@@ -53,7 +53,7 @@ class Simulation:
         return self.results, self.time
     
     def __skidpad_sim(self):
-        path_radius = 7.75 + self.car.params.front_trackwidth/2 + .1524
+        path_radius = 7.75 + self.car.params.front_track/2 + .1524
         speed = self.car.max_vel_corner(path_radius) # speed to possible to take
         time = path_radius * 2 * np.pi / speed
         # x = t * v
@@ -67,9 +67,9 @@ class Simulation:
             df[x] = 0
 
         for i, row in (df[::-1] if is_reverse else df).iterrows():
-            vmax = min(self.car.max_vel, self.car.max_vel_corner(row["R"]))
+            vmax = min(self.car.params.max_vel, self.car.max_vel_corner(row["R"]))
 
-            AY = self.car.lateral(self.car.max_vel) # accel capabilities
+            AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
             df.loc[i,"ay"] = min(vel**2/row["R"]/gravity, AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
                 df.loc[i,"ax"] = accel_func(vel, df.loc[i,"ay"])

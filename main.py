@@ -1,9 +1,9 @@
 import pandas as pd
-import numpy as np
 import engine
+import magic_moment_method.vehicle_params as vehicles
 
 def main():
-    easy_driver = engine.Racecar("Concept2023")
+    easy_driver = engine.Racecar(vehicles.Concept2023())
 
     endurance_track = engine.Track("endurance_michigan_2019", 1681.963)
     autocross_track = engine.Track("autocross_michigan_2019", 63.236)
@@ -38,8 +38,6 @@ def main():
     # results[1].to_csv("results/autocross_michigan_2019-easy_driver.csv")
     # print(times)
     # print(points)
-
-    
 
 if __name__ == "__main__":
     main()
