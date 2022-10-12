@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 def main():
-    easy_driver = engine.Racecar(vehicles.Concept2023(), "engine/magic_moment_method/analysis/GGV.csv")
+    easy_driver = engine.Racecar(vehicles.Concept2023() ) #, "engine/magic_moment_method/analysis/GGV.csv")
 
     endurance_track = engine.Track("endurance_michigan_2019", 1681.963)
     autocross_track = engine.Track("autocross_michigan_2019", 63.236)
@@ -17,7 +17,7 @@ def main():
     # NOTE: guesstimation based from TTC on maximum tire saturation slip angle
     sweep_range = {"body_slip": (-10 * np.pi / 180, 10 * np.pi / 180),
             "steered_angle" : (-18 * np.pi / 180, 18 * np.pi / 180),
-            "velocity" : (5, 30),
+            "velocity" : (3, 30),
             "torque_request": (-1, 1),
             "is_left_diff_bias": (True, False)}
     mesh_size = 11
@@ -40,7 +40,7 @@ def main():
 
 
     ### Example: One-off simulations ###
-    #easy_driver.regenerate_GGV(sweep_range, mesh_size)
+    easy_driver.regenerate_GGV(sweep_range, mesh_size)
     #easy_driver.save_ggv("engine/magic_moment_method/analysis/GGV.csv")
     results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,
                             skidpad_times, accel_times).run()
