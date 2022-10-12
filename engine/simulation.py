@@ -61,20 +61,20 @@ class Simulation:
 
     def __forward_sim(self, df, starting_vel, is_reverse):
         accel_func = self.car.deccel if is_reverse else self.car.accel
-        gravity = 9.81
         vel = starting_vel
         for x in ["delta_t", "delta_vel", "vel", "ay", "ax"]:
             df[x] = 0
 
         for i, row in (df[::-1] if is_reverse else df).iterrows():
-            vmax = min(self.car.params.max_vel, self.car.max_vel_corner(row["R"]))
-
+            vmax = self.car.max_vel_corner(row["R"])
             AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
-            df.loc[i,"ay"] = min(vel**2/row["R"]/gravity, AY) if row["R"] != 0 else 0 # actual accel
+            df.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
                 df.loc[i,"ax"] = accel_func(vel, df.loc[i,"ay"])
-                df.loc[i,"delta_t"] = max(np.roots([0.5*gravity*df.loc[i,"ax"], vel, -row["dist"]]))
-                df.loc[i,"delta_vel"] = min(gravity*df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
+                # TODO: delta_t is negative and huge sometimes
+                roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["dist"]])
+                df.loc[i,"delta_t"] = max(roots) if df.loc[i,"ax"] >= 0 else min(roots)
+                df.loc[i,"delta_vel"] = min(df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
                 df.loc[i,"vel"] = vel + df.loc[i,"delta_vel"]
                 vel = df.loc[i,"vel"]
             else:

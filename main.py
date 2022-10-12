@@ -40,14 +40,22 @@ def main():
 
 
     ### Example: One-off simulations ###
-    # easy_driver.regenerate_GGV(sweep_range, mesh_size)
-    # easy_driver.save_ggv("engine/magic_moment_method/analysis/GGV.csv")
-    # results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,
-    #                         skidpad_times, accel_times).run()
-    # results[0].to_csv("results/endurance_michigan_2019-easy_driver.csv")
-    # results[1].to_csv("results/autocross_michigan_2019-easy_driver.csv")
-    # print(times)
-    # # print(points)
+    #easy_driver.regenerate_GGV(sweep_range, mesh_size)
+    #easy_driver.save_ggv("engine/magic_moment_method/analysis/GGV.csv")
+    results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,
+                            skidpad_times, accel_times).run()
+    results[0].to_csv("results/endurance_michigan_2019-easy_driver.csv")
+    results[1].to_csv("results/autocross_michigan_2019-easy_driver.csv")
+    print(times)
+    print(points)
+    # for radius in [5, 10, 20, 30, 40, 60]:
+    #     print(easy_driver.max_vel_corner(radius))
+    # print(easy_driver.deccel(25, 5))
+    # print(easy_driver.accel(25, 5))
+    # accel_track = engine.Track("Acceleration", best_time = accel_times)
+    # acceleration_sim = engine.Simulation(easy_driver, accel_track)
+    # results, time = acceleration_sim.run()
+    # print(time)
 
 if __name__ == "__main__":
     main()
