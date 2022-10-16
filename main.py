@@ -20,7 +20,7 @@ def main():
             "velocity" : (3, 30),
             "torque_request": (-1, 1),
             "is_left_diff_bias": (True, False)}
-    mesh_size = 11
+    mesh_size = 3
     
     # masses = np.array([400, 500, 600]) - 22*4 * .454
     # results_df = pd.DataFrame(columns=["mass", "points", "endurance_time"])
