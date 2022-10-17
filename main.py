@@ -21,7 +21,7 @@ def main():
             "velocity" : (3, 30),
             "torque_request": (-1, 1),
             "is_left_diff_bias": (True, False)}
-    mesh_size = 11 # MAKE SURE THIS IS ODD
+    mesh_size = 7 # MAKE SURE THIS IS ODD
     
     # masses = np.array([400, 500, 600]) - 22*4 * .454
     # results_df = pd.DataFrame(columns=["mass", "points", "endurance_time"])
@@ -41,14 +41,14 @@ def main():
 
 
     ### Example: One-off simulations ###
-    # easy_driver.regenerate_GGV(sweep_range, mesh_size)
-    # easy_driver.save_ggv("engine/magic_moment_method/analysis/GGV.csv")
-    results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,
-                            skidpad_times, accel_times).run()
-    results[0].to_csv("results/endurance_michigan_2019-easy_driver.csv")
-    results[1].to_csv("results/autocross_michigan_2019-easy_driver.csv")
-    print(times)
-    print(points)
+    easy_driver.regenerate_GGV(sweep_range, mesh_size)
+    easy_driver.save_ggv("engine/magic_moment_method/analysis/GGV.csv")
+    # results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,
+    #                         skidpad_times, accel_times).run()
+    # results[0].to_csv("results/endurance_michigan_2019-easy_driver.csv")
+    # results[1].to_csv("results/autocross_michigan_2019-easy_driver.csv")
+    # print(times)
+    # print(points)
 
 
     # for radius in [5, 10, 20, 30, 40, 60]:
