@@ -7,6 +7,7 @@ class Racecar:
     def __init__(self, racecar, existing_ggv_file = None):
         self.ggv = pd.read_csv(existing_ggv_file) if existing_ggv_file else None
         self.params = racecar
+        self.additional_compute_columns = ["motor_angular_speed", ""]
 
     def regenerate_GGV(self, sweep_range, mesh):
         self.ggv = ggv_generator(self.params, sweep_range, mesh)

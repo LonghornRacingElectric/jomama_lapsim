@@ -2,14 +2,15 @@ import engine
 from engine import racecar
 import engine.magic_moment_method.vehicle_params as vehicles
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 def main():
-    easy_driver = engine.Racecar(vehicles.Concept2023() ) #, "engine/magic_moment_method/analysis/GGV.csv")
+    easy_driver = engine.Racecar(vehicles.Concept2023(), "engine/magic_moment_method/analysis/GGV.csv")
 
-    endurance_track = engine.Track("endurance_michigan_2019", 1681.963)
-    autocross_track = engine.Track("autocross_michigan_2019", 63.236)
+    endurance_track = engine.Track("racing_lines/endurance_michigan_2019-racing_line.csv", 1681.963)
+    autocross_track = engine.Track("racing_lines/autocross_michigan_2019-racing_line.csv", 63.236)
     skidpad_times = 5.0497
     accel_times = 4.004
 
@@ -20,7 +21,7 @@ def main():
             "velocity" : (3, 30),
             "torque_request": (-1, 1),
             "is_left_diff_bias": (True, False)}
-    mesh_size = 11
+    mesh_size = 11 # MAKE SURE THIS IS ODD
     
     # masses = np.array([400, 500, 600]) - 22*4 * .454
     # results_df = pd.DataFrame(columns=["mass", "points", "endurance_time"])
@@ -40,14 +41,16 @@ def main():
 
 
     ### Example: One-off simulations ###
-    easy_driver.regenerate_GGV(sweep_range, mesh_size)
-    #easy_driver.save_ggv("engine/magic_moment_method/analysis/GGV.csv")
+    # easy_driver.regenerate_GGV(sweep_range, mesh_size)
+    # easy_driver.save_ggv("engine/magic_moment_method/analysis/GGV.csv")
     results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,
                             skidpad_times, accel_times).run()
     results[0].to_csv("results/endurance_michigan_2019-easy_driver.csv")
     results[1].to_csv("results/autocross_michigan_2019-easy_driver.csv")
     print(times)
     print(points)
+
+
     # for radius in [5, 10, 20, 30, 40, 60]:
     #     print(easy_driver.max_vel_corner(radius))
     # print(easy_driver.deccel(25, 5))
