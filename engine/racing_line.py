@@ -58,14 +58,14 @@ class Racing_Line:
     def cost(self, gate_fracs):
         self.update_path(gate_fracs)
 
-        dt = .000001  # interval to sample curvature
+        dt = .01  # interval to sample curvature
         curv_sum = 0  # total curvature weighted by arc length
         ts = np.arange(1, len(self.center_pts.to_numpy()), dt)
         for t in ts:
             ds = np.sqrt(self.spline_x.derivative(1)(t)**2+self.spline_y.derivative(1)(t)**2)*dt  # arc length differential from dt
             curv_sum += self.curvature_calc(t,self.spline_x,self.spline_y)*ds
             if self.curvature_calc(t,self.spline_x,self.spline_y)*ds < 4.5:
-                return 1e3
+                curv_sum += 1000
         print("eval")
         return curv_sum
 
