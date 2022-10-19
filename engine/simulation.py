@@ -9,6 +9,7 @@ class Simulation:
 
         self.time = 0
         self.results = None
+        self.reverse_sim = None
 
     def run(self):
         if self.is_skidpad:
@@ -34,6 +35,7 @@ class Simulation:
         initial_forward_sim_df = self.__forward_sim(track_points.copy(deep = True), 20, False) # TODO: starting speed?
         starting_vel = initial_forward_sim_df["vel"].iloc[initial_forward_sim_df.shape[1]]
         reverse_sim_df = self.__forward_sim(track_points.copy(deep = True), starting_vel, True)
+        self.reverse_sim = reverse_sim_df
         forward_sim_df = self.__forward_sim(track_points.copy(deep = True), starting_vel, False)
     
         ### COMBINE RESULTS
@@ -66,14 +68,16 @@ class Simulation:
             df[x] = 0
 
         for i, row in (df[::-1] if is_reverse else df).iterrows():
-            vmax = self.car.max_vel_corner(row["R"])
+            radius = 5 if row["R"] < 5 and row["R"] > 0 else row["R"] # TODO: fucking broken man
+            vmax = self.car.max_vel_corner(radius)
             AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
-            df.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
+            df.loc[i,"ay"] = min(vel**2/radius, AY) if radius != 0 else 0 # actual accel
             if vel < vmax:
                 df.loc[i,"ax"] = accel_func(vel, df.loc[i,"ay"])
-                # TODO: delta_t is negative and huge sometimes
                 roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["dist"]])
                 df.loc[i,"delta_t"] = max(roots) if df.loc[i,"ax"] >= 0 else min(roots)
+                # if isinstance(df.loc[i,"delta_t"], complex):
+                #     df.loc[i,"delta_t"] = 0
                 df.loc[i,"delta_vel"] = min(df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
                 df.loc[i,"vel"] = vel + df.loc[i,"delta_vel"]
                 vel = df.loc[i,"vel"]
