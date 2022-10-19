@@ -8,6 +8,7 @@ matplotlib.use("TkAgg")
 
 class Racing_Line:
     def __init__(self, cone_pts_csv, track_type, track_name):
+        self.counter = 0
         self.type = track_type
         self.name = track_name
 
@@ -66,14 +67,16 @@ class Racing_Line:
             curv_sum += self.curvature_calc(t,self.spline_x,self.spline_y)*ds
             if self.curvature_calc(t,self.spline_x,self.spline_y)*ds < 4.5:
                 curv_sum += 1000
-        print("eval")
+        self.counter += 1
+        print(f"Current Iteration: {self.counter}")
         return curv_sum
 
 
     def optimize(self):
         offsets = minimize(self.cost, [.5 for x in range(len(self.cone_pts.index))], bounds=[[0, 1] for x in range(len(self.cone_pts.index))], options={"maxiter":5}).x
         self.write_path()
-        print("done")
+        print("Done")
+        print(f"Total number of iterations: {self.counter}")
 
     def update_path(self, gate_fracs):
         self.inter_pts = pd.DataFrame(columns=['inter_x', 'inter_y'])
@@ -95,10 +98,12 @@ class Racing_Line:
         y = self.spline_y(s)
         z = [0]*len(s)
 
-        df = pd.DataFrame({"x": x, "y": y, "z": z})
+        curvature = []
+        for t in s:
+            curvature.append(self.curvature_calc(t, self.spline_x, self.spline_y))
+
+        df = pd.DataFrame({"x": x, "y": y, "z": z, "t": s, "curvature": curvature})
         df.to_csv(path_or_buf=("../racing_lines/%s.csv" % self.name), index=False)
-
-
 
 
 # r = Racing_Line("Autocross_Michigan_2019_Sanitized.xlsx", "ax", "ax_mi_2019")
