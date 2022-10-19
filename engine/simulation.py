@@ -67,7 +67,7 @@ class Simulation:
             df[x] = 0
 
         for i, row in (df[::-1] if is_reverse else df).iterrows():
-            vmax = min(self.car.max_vel, self.car.max_vel_corner(row["R"]))
+            vmax = min(self.car.max_vel, self.car.max_vel_corner(row["curvature"]))
 
             AY = self.car.lateral(self.car.max_vel) # accel capabilities
             df.loc[i,"ay"] = min(vel**2/row["curvature"]/gravity, AY) if row["curvature"] != 0 else 0 # actual accel
