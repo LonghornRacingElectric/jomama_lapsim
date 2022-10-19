@@ -59,7 +59,7 @@ class Racing_Line:
     def cost(self, gate_fracs):
         self.update_path(gate_fracs)
 
-        dt = .01  # interval to sample curvature
+        dt = 0.01  # interval to sample curvature
         curv_sum = 0  # total curvature weighted by arc length
         ts = np.arange(1, len(self.center_pts.to_numpy()), dt)
         for t in ts:
@@ -106,10 +106,8 @@ class Racing_Line:
         df.to_csv(path_or_buf=("../racing_lines/%s.csv" % self.name), index=False)
 
 
-# r = Racing_Line("Autocross_Michigan_2019_Sanitized.xlsx", "ax", "ax_mi_2019")
-r = Racing_Line("Endurance_Michigan_2019_Sanitized.xlsx", "en", "en_mi_2019")
-
-print("init done")
+r = Racing_Line("Autocross_Michigan_2019_Sanitized.xlsx", "ax", "ax_mi_2019")
+# r = Racing_Line("Endurance_Michigan_2019_Sanitized.xlsx", "en", "en_mi_2019")
 
 ts = np.arange(1, len(r.center_pts.index), 0.01)
 disc_x = r.spline_x(ts)

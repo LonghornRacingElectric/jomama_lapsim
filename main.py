@@ -5,8 +5,8 @@ import engine
 def main():
     easy_driver = engine.Racecar("")
 
-    endurance_track = engine.Track("endurance_michigan_2019", 1, 1)
-    autocross_track = engine.Track("autocross_michigan_2019", 1, 1)
+    endurance_track = engine.Track("en_mi_2019", 1, 1)
+    autocross_track = engine.Track("ax_mi_2019", 1, 1)
     skidpad_times = [1, 1]
     accel_times = [1, 1]
 
