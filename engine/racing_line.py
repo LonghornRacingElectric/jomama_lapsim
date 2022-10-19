@@ -11,7 +11,7 @@ class Racing_Line:
         self.type = track_type
         self.name = track_name
 
-        self.cone_pts = pd.read_excel("../tracks/Autocross_Michigan_2019_Sanitized.xlsx")  # in feet, assumes following form: out_x | out_y | in_x | in_y, pd will auto add gate num
+        self.cone_pts = pd.read_excel(io=("../tracks/%s" % cone_pts_csv))  # in feet, assumes following form: out_x | out_y | in_x | in_y, pd will auto add gate num
 
         for x in ["out_x", "out_y", "in_x", "in_y"]:
             self.cone_pts[x] *= .3048  # convert cone coords into meters
@@ -58,14 +58,14 @@ class Racing_Line:
     def cost(self, gate_fracs):
         self.update_path(gate_fracs)
 
-        dt = .001  # interval to sample curvature
+        dt = .000001  # interval to sample curvature
         curv_sum = 0  # total curvature weighted by arc length
         ts = np.arange(1, len(self.center_pts.to_numpy()), dt)
         for t in ts:
             ds = np.sqrt(self.spline_x.derivative(1)(t)**2+self.spline_y.derivative(1)(t)**2)*dt  # arc length differential from dt
             curv_sum += self.curvature_calc(t,self.spline_x,self.spline_y)*ds
             if self.curvature_calc(t,self.spline_x,self.spline_y)*ds < 4.5:
-                curv_sum += 1000
+                return 1e3
         print("eval")
         return curv_sum
 
