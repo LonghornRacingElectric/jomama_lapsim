@@ -89,7 +89,7 @@ class Racing_Line:
         self.spline_y = CubicSpline(self.n, [point[1] for point in self.inter_pts.to_numpy()], bc_type="natural")# bc_type=("natural" if self.type=="ax" else "periodic"))
 
     def write_path(self):
-        inc = .01
+        inc = .05
         s = np.arange(1, len(self.n), inc)
         x = self.spline_x(s)
         y = self.spline_y(s)
@@ -101,8 +101,8 @@ class Racing_Line:
 
 
 
-r = Racing_Line("Autocross_Michigan_2019_Sanitized.xlsx", "ax", "ax_mi_2019")
-# r = Racing_Line("Endurance_Michigan_2019_Sanitized.xlsx", "en", "en_mi_2019")
+# r = Racing_Line("Autocross_Michigan_2019_Sanitized.xlsx", "ax", "ax_mi_2019")
+r = Racing_Line("Endurance_Michigan_2019_Sanitized.xlsx", "en", "en_mi_2019")
 
 print("init done")
 
