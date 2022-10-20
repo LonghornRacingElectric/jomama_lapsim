@@ -58,26 +58,22 @@ class Simulation:
         path_radius = 7.75 + self.car.params.front_track/2 + .1524
         speed = self.car.max_vel_corner(path_radius) # speed to possible to take
         time = path_radius * 2 * np.pi / speed
-        # x = t * v
         return time
 
     def __forward_sim(self, df, starting_vel, is_reverse):
         accel_func = self.car.deccel if is_reverse else self.car.accel
         vel = starting_vel
-        for x in ["delta_t", "delta_vel", "vel", "ay", "ax"]:
+        for x in ["delta_t", "delta_vel", "vel", "ay", "ax", "power_in", "motor_torque"]:
             df[x] = 0
 
         for i, row in (df[::-1] if is_reverse else df).iterrows():
-            radius = 5 if row["R"] < 5 and row["R"] > 0 else row["R"] # TODO: fucking broken man
-            vmax = self.car.max_vel_corner(radius)
+            vmax = self.car.max_vel_corner(row["R"])
             AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
-            df.loc[i,"ay"] = min(vel**2/radius, AY) if radius != 0 else 0 # actual accel
+            df.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
-                df.loc[i,"ax"] = accel_func(vel, df.loc[i,"ay"])
+                df.loc[i,"ax"], df.loc[i,"power_in"], df.loc["motor_torque"] = accel_func(vel, df.loc[i,"ay"])
                 roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["dist"]])
-                df.loc[i,"delta_t"] = max(roots) if df.loc[i,"ax"] >= 0 else min(roots)
-                # if isinstance(df.loc[i,"delta_t"], complex):
-                #     df.loc[i,"delta_t"] = 0
+                df.loc[i,"delta_t"] = min(roots) if min(roots) > 0 else max(roots)
                 df.loc[i,"delta_vel"] = min(df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
                 df.loc[i,"vel"] = vel + df.loc[i,"delta_vel"]
                 vel = df.loc[i,"vel"]
