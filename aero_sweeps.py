@@ -20,7 +20,7 @@ Cl_A = (np.linspace(TEST_MIN, TEST_MAX, divisions))
 Cd_A = 1.2 * (K * (Cl_A - Cl0) ** 2 + Cd0)
 Cl_A *= 1.2
 
-# TODO: Upgrade this to reflect the new fit from Andrew, basically Cl will increase energy consumption (kWh) due to drag
+# TODO: Upgrade this to reflect the new fit from Andrew Zhang, basically Cl will increase energy consumption (kWh) due to drag
 #           then the extra kWh will correlate to more mass (Andrews equation). Challenge is to correlate drag and kWh.
 #               LapSim should be able to do so given the torque request. If you have questions about it contact Igor Souza
 Aero_mass = 0.3745 * (Cl_A*1.2) ** 2 + 0.0612 * Cl_A + 0.7783  
