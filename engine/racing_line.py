@@ -4,6 +4,7 @@ from scipy.optimize import minimize
 from scipy.interpolate import CubicSpline
 import matplotlib.pyplot as plt
 import matplotlib
+import warnings
 matplotlib.use("TkAgg")
 
 class Racing_Line:
@@ -44,17 +45,21 @@ class Racing_Line:
         self.optimize()
 
     def curvature_calc(self, t, x, y):
-        # let r(t) = (x(t), y(t))
+        dxdt = x.derivative(1)(t)
 
-        r_dot_x, r_dot_y = x.derivative(1)(t), y.derivative(1)(t)
+        dydt = y.derivative(1)(t)
 
-        r_double_dot_x, r_double_dot_y = x.derivative(2)(t), y.derivative(2)(t)
+        dydx = dydt / dxdt
 
-        # k = ||r'(t) x r''(t)|| / ||r'(t)||**3
+        d2xdt2 = x.derivative(2)(t)
 
-        cross = np.cross((r_dot_x, r_dot_y), (r_double_dot_x, r_double_dot_y))
+        d2ydt2 = y.derivative(2)(t)
 
-        return abs(cross) / ((r_dot_x) ** 2 + (r_dot_y) ** 2) ** (3 / 2)
+        d2ydx2 = (d2ydt2 * dxdt - dydt * d2xdt2) / (dxdt)**2
+
+        warnings.filterwarnings("ignore")
+        
+        return abs((1 + dydx**2)**(3/2) / d2ydx2)
 
     def cost(self, gate_fracs):
         self.update_path(gate_fracs)
