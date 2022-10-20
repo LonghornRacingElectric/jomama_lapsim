@@ -6,8 +6,8 @@ import pandas as pd
 def main():
     # NOTE: this requires a GGV to be pre generated (second input)
     easy_driver = engine.Racecar(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"))
-    endurance_track = engine.Track("racing_lines/endurance_michigan_2019-racing_line.csv", 1681.963)
-    autocross_track = engine.Track("racing_lines/autocross_michigan_2019-racing_line.csv", 63.236)
+    endurance_track = engine.Track("racing_lines/en_mi_2019.csv", 1681.963)
+    autocross_track = engine.Track("racing_lines/ax_mi_2019.csv", 63.236)
     skidpad_times = 5.0497
     accel_times = 4.004
 
