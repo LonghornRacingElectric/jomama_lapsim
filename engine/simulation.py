@@ -9,6 +9,7 @@ class Simulation:
 
         self.time = 0
         self.results = None
+        self.reverse_sim = None
 
     def run(self):
         if self.is_skidpad:
@@ -34,6 +35,7 @@ class Simulation:
         initial_forward_sim_df = self.__forward_sim(track_points.copy(deep = True), 20, False) # TODO: starting speed?
         starting_vel = initial_forward_sim_df["vel"].iloc[initial_forward_sim_df.shape[1]]
         reverse_sim_df = self.__forward_sim(track_points.copy(deep = True), starting_vel, True)
+        self.reverse_sim = reverse_sim_df
         forward_sim_df = self.__forward_sim(track_points.copy(deep = True), starting_vel, False)
     
         ### COMBINE RESULTS
@@ -53,7 +55,7 @@ class Simulation:
         return self.results, self.time
     
     def __skidpad_sim(self):
-        path_radius = 7.75 + self.car.params.front_trackwidth/2 + .1524
+        path_radius = 7.75 + self.car.params.front_track/2 + .1524
         speed = self.car.max_vel_corner(path_radius) # speed to possible to take
         time = path_radius * 2 * np.pi / speed
         # x = t * v
@@ -61,20 +63,22 @@ class Simulation:
 
     def __forward_sim(self, df, starting_vel, is_reverse):
         accel_func = self.car.deccel if is_reverse else self.car.accel
-        gravity = 9.81
         vel = starting_vel
         for x in ["delta_t", "delta_vel", "vel", "ay", "ax"]:
             df[x] = 0
 
         for i, row in (df[::-1] if is_reverse else df).iterrows():
-            vmax = min(self.car.max_vel, self.car.max_vel_corner(row["R"]))
-
-            AY = self.car.lateral(self.car.max_vel) # accel capabilities
-            df.loc[i,"ay"] = min(vel**2/row["R"]/gravity, AY) if row["R"] != 0 else 0 # actual accel
+            radius = 5 if row["R"] < 5 and row["R"] > 0 else row["R"] # TODO: fucking broken man
+            vmax = self.car.max_vel_corner(radius)
+            AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
+            df.loc[i,"ay"] = min(vel**2/radius, AY) if radius != 0 else 0 # actual accel
             if vel < vmax:
                 df.loc[i,"ax"] = accel_func(vel, df.loc[i,"ay"])
-                df.loc[i,"delta_t"] = max(np.roots([0.5*gravity*df.loc[i,"ax"], vel, -row["dist"]]))
-                df.loc[i,"delta_vel"] = min(gravity*df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
+                roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["dist"]])
+                df.loc[i,"delta_t"] = max(roots) if df.loc[i,"ax"] >= 0 else min(roots)
+                # if isinstance(df.loc[i,"delta_t"], complex):
+                #     df.loc[i,"delta_t"] = 0
+                df.loc[i,"delta_vel"] = min(df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
                 df.loc[i,"vel"] = vel + df.loc[i,"delta_vel"]
                 vel = df.loc[i,"vel"]
             else:

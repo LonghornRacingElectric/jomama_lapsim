@@ -1,0 +1,3 @@
+[submodule "engine/magic_moment_method"]
+	path = engine/magic_moment_method
+	url = https://github.com/LonghornRacingElectric/magic_moment_method.git
