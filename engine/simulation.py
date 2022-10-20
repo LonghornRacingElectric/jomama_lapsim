@@ -68,7 +68,7 @@ class Simulation:
 
         for i, row in (df[::-1] if is_reverse else df).iterrows():
             vmax = self.car.max_vel_corner(row["curvature"])
-            AY = self.car.lateral(self.car.max_vel) # accel capabilities
+            AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
             df.loc[i,"ay"] = min(vel**2/row["curvature"], AY) if row["curvature"] != 0 else 0 # actual accel
             if vel < vmax:
                 df.loc[i,"ax"] = accel_func(vel, df.loc[i,"ay"])

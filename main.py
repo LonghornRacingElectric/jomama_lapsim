@@ -43,9 +43,9 @@ def main():
     ####################################
     ### Example: One-off simulations ###
 
-    #easy_driver.ggv = pd.read_csv("results/GGV.csv")
-    easy_driver.regenerate_GGV(sweep_range, mesh_size)
-    easy_driver.save_ggv("results/GGV.csv")
+    easy_driver.ggv = pd.read_csv("results/GGV.csv")
+    #easy_driver.regenerate_GGV(sweep_range, mesh_size)
+    #easy_driver.save_ggv("results/GGV.csv")
     #endurance_track.regenerate_racing_line(easy_driver.params.front_trackwidth)
     #autocross_track.regenerate_racing_line(easy_driver.params.front_trackwidth)
     results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,

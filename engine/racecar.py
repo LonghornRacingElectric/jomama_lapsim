@@ -6,7 +6,6 @@ class Racecar:
     def __init__(self, racecar, existing_ggv_file = None):
         self.ggv = pd.read_csv(existing_ggv_file) if existing_ggv_file else None
         self.params = racecar
-        self.additional_compute_columns = ["motor_angular_speed", ""]
 
     def regenerate_GGV(self, sweep_range, mesh):
         self.ggv = generate_GGV(self.params, sweep_range, mesh)
@@ -98,14 +97,10 @@ class Racecar:
         return lateral_accel_interpolated
 
     def max_vel_corner(self, radius):
-        try:
-            if radius > 80 or radius == 0:
-                return self.params.max_vel
-            def vel_solver(x):
-                velocity = x[0]
-                return velocity**2/radius-self.lateral(velocity)
-            vel_corner = fsolve(vel_solver, [14])[0]
-        except:
-            print(radius)
-            raise Exception
+        if radius > 80 or radius == 0:
+            return self.params.max_vel
+        def vel_solver(x):
+            velocity = x[0]
+            return velocity**2/radius-self.lateral(velocity)
+        vel_corner = fsolve(vel_solver, [radius])[0]
         return vel_corner if vel_corner < self.params.max_vel else self.params.max_vel
