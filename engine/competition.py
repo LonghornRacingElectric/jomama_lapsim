@@ -4,7 +4,7 @@ class Competition:
     def __init__(self, racecar, endurance, autocross, skidpad_times = None, accel_times = None):
         self.racecar = racecar
 
-        accel_track = engine.Track("racing_lines/Acceleration-racing_line.csv", best_time = accel_times)
+        accel_track = engine.Track("racing_lines/acceleration.csv", best_time = accel_times)
         skidpad_track = engine.Track(best_time = skidpad_times)
         
         self.endurance_sim = engine.Simulation(self.racecar, endurance)
