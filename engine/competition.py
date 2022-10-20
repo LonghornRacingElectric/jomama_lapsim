@@ -51,13 +51,13 @@ class Competition:
         if time_ax < ax_min:
             score_ax = 125
         elif time_ax <= ax_max:
-            score_ax = 118.5 * ((ax_max/time_ax - 1)/(ax_max/ax_min) - 1) + 6.5
+            score_ax = 118.5 * ((ax_max/time_ax - 1)/((ax_max/ax_min) - 1)) + 6.5
         else:
             score_ax = 6.5
 
         e_min = self.endurance_sim.track.best_time
         e_max = 1.45 * e_min
-        time_e_total = 15 * time_e
+        time_e_total = 11 * time_e
         if time_e_total < e_min:
             score_e = 275
         elif time_e_total <= e_max:

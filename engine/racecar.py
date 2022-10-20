@@ -85,6 +85,8 @@ class Racecar:
         return self.accel(vel, lateral, False) * -1
 
     def lateral(self, vel):
+        if vel < 0:
+            return 0
         # Find closest velocities
         closest_vels = self.__get_nearest_velocities(vel)
         if closest_vels[1] is None:
@@ -97,10 +99,17 @@ class Racecar:
         return lateral_accel_interpolated
 
     def max_vel_corner(self, radius):
-        if radius > 80 or radius == 0:
-            return self.params.max_vel
-        def vel_solver(x):
-            velocity = x[0]
-            return velocity**2/radius-self.lateral(velocity)
-        vel_corner = fsolve(vel_solver, [radius])[0]
+        try:
+            if radius > 80 or radius == 0:
+                return self.params.max_vel
+            # TODO: FIX THIS BULLSHIT
+            if radius < 7:
+                radius = 7
+            def vel_solver(x):
+                velocity = x[0]
+                return velocity**2/radius-self.lateral(velocity)
+            vel_corner = fsolve(vel_solver, [radius])[0]
+        except:
+            print(radius)
+            raise Exception
         return vel_corner if vel_corner < self.params.max_vel else self.params.max_vel
