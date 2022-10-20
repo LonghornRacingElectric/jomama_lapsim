@@ -63,7 +63,7 @@ class Simulation:
     def __forward_sim(self, df, starting_vel, is_reverse):
         accel_func = self.car.deccel if is_reverse else self.car.accel
         vel = starting_vel
-        for x in ["delta_t", "delta_vel", "vel", "ay", "ax"]:
+        for x in ["delta_t", "delta_vel", "vel", "ay", "ax", "power_in", "motor_torque"]:
             df[x] = 0
 
         for i, row in (df[::-1] if is_reverse else df).iterrows():
@@ -71,7 +71,7 @@ class Simulation:
             AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
             df.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
-                df.loc[i,"ax"] = accel_func(vel, df.loc[i,"ay"])
+                df.loc[i,"ax"], df.loc[i,"power_in"], df.loc["motor_torque"] = accel_func(vel, df.loc[i,"ay"])
                 roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["dist"]])
                 df.loc[i,"delta_t"] = min(roots) if min(roots) > 0 else max(roots)
                 df.loc[i,"delta_vel"] = min(df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
