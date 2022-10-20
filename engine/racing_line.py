@@ -58,9 +58,12 @@ class Racing_Line:
         d2ydx2 = (d2ydt2 * dxdt - dydt * d2xdt2) / (dxdt)**2
 
         warnings.filterwarnings("ignore")
+        try:
+            return abs((1 + dydx**2)**(3/2) / d2ydx2)
         
-        return abs((1 + dydx**2)**(3/2) / d2ydx2)
-
+        except:
+            return 1e10
+    
     def cost(self, gate_fracs):
         self.update_path(gate_fracs)
 
@@ -69,8 +72,8 @@ class Racing_Line:
         ts = np.arange(1, len(self.center_pts.to_numpy()), dt)
         for t in ts:
             ds = np.sqrt(self.spline_x.derivative(1)(t)**2+self.spline_y.derivative(1)(t)**2)*dt  # arc length differential from dt
-            curv_sum += self.curvature_calc(t,self.spline_x,self.spline_y)*ds
-            if self.curvature_calc(t,self.spline_x,self.spline_y)*ds < 4.5:
+            curv_sum += self.curvature_calc(t,self.spline_x,self.spline_y)**-1
+            if self.curvature_calc(t, self.spline_x, self.spline_y) < 4.5:
                 curv_sum += 1000
         self.counter += 1
         print(f"Current Iteration: {self.counter}")
