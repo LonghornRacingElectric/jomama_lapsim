@@ -1,56 +1,69 @@
 import numpy as np
 import pandas as pd
+from engine.racecar import Racecar
+from engine.track import Track
 
 class Simulation:
-    def __init__(self, car, track, is_skidpad = False):
+    def __init__(self, car:Racecar, track:Track):
         self.track = track
         self.car = car
-        self.is_skidpad = is_skidpad
 
         self.time = 0
         self.results = None
-        self.reverse_sim = None
+
+        self.forward_sim_results = None
+        self.reverse_sim_results = None
 
     def run(self):
-        if self.is_skidpad:
+        if self.track.track_type == "skidpad":
             return None, self.__skidpad_sim()
 
         # get turn radii from raceline points
         track_points = curvature(self.track.path_points())
 
-        # find dist traveled for each point on track
-        track_points["dist"], track_points["pos"], length_traveled = 0, 0, 0
+        # add columns to dataframe
+        transfer_values = self.car.ggv.columns
+        for x in ["delta_time", "delta_velocity", "velocity", "ay", "ax", "delta_position", "position"]: #, *transfer_values]:
+            track_points[x] = 0
+
+        # find delta_position (distance) traveled for each point on track
+        length_traveled = 0
         previous_row = track_points.iloc[1]
         for i, row in track_points.iloc[1:].iterrows():
-            dist = ((row["x"] - previous_row["x"])**2 + (row["y"] - previous_row["y"])**2)**0.5
-            track_points.loc[i,"dist"] = dist
-            previous_row, length_traveled = row, length_traveled + dist
-            track_points.loc[i,"pos"] = length_traveled
+            delta_position = ((row["x"] - previous_row["x"])**2 + (row["y"] - previous_row["y"])**2)**0.5
+            track_points.loc[i,"delta_position"] = delta_position
+            previous_row, length_traveled = row, length_traveled + delta_position
+            track_points.loc[i,"delta_position"] = length_traveled
 
         # TODO: temp fix - make it work without this
         track_points = track_points.drop(track_points.shape[0]-1)
         track_points = track_points.drop(0)
         track_points = track_points.drop(1)
 
-        initial_forward_sim_df = self.__forward_sim(track_points.copy(deep = True), 20, False) # TODO: starting speed?
-        starting_vel = initial_forward_sim_df["vel"].iloc[initial_forward_sim_df.shape[1]]
-        reverse_sim_df = self.__forward_sim(track_points.copy(deep = True), starting_vel, True)
-        self.reverse_sim = reverse_sim_df
-        forward_sim_df = self.__forward_sim(track_points.copy(deep = True), starting_vel, False)
+        # initial forward sim to find starting / ending velocity
+        initial_forward_sim_df = self.__one_direction_sim(track_points.copy(deep = True), 20, True)
+        if self.track.track_type == "endurance":
+            starting_velocity = initial_forward_sim_df["velocity"].iloc[initial_forward_sim_df.shape[1]]
+            ending_velocity = starting_velocity
+        else:
+            starting_velocity = 0
+            ending_velocity = initial_forward_sim_df["velocity"].iloc[initial_forward_sim_df.shape[1]]
+        self.reverse_sim_results = self.__one_direction_sim(track_points.copy(deep = True), ending_velocity, False)
+        self.forward_sim_results = self.__one_direction_sim(track_points.copy(deep = True), starting_velocity, True)
     
-        ### COMBINE RESULTS
+        ### COMBINE RESULTS OF FORWARD AND REVERSE SIM
         time, rows = 0, []
         for index, row in track_points.iterrows():
-            reverse_row = reverse_sim_df.loc[index]
-            forward_row = forward_sim_df.loc[index]
-            if (forward_row["vel"] - reverse_row["vel"]) < 0:
-                time += forward_row.loc["delta_t"]
+            reverse_row = self.reverse_sim_results.loc[index]
+            forward_row = self.forward_sim_results.loc[index]
+            if (forward_row["velocity"] - reverse_row["velocity"]) < 0:
+                time += forward_row.loc["delta_time"]
                 rows.append(np.array([*forward_row, time]))
             else:
-                time += reverse_row.loc["delta_t"]
+                time += reverse_row.loc["delta_time"]
                 rows.append(np.array([*reverse_row, time]))
         
-        self.results = pd.DataFrame(rows, columns=[*reverse_sim_df.columns, "time"])
+        self.results = pd.DataFrame(rows, columns=[*self.reverse_sim_results.columns, "time"])
         self.time = self.results["time"].max()
         return self.results, self.time
     
@@ -60,30 +73,43 @@ class Simulation:
         time = path_radius * 2 * np.pi / speed
         return time
 
-    def __forward_sim(self, df, starting_vel, is_reverse):
-        accel_func = self.car.deccel if is_reverse else self.car.accel
+    def __one_direction_sim(self, df, starting_vel, is_forward):
         vel = starting_vel
-        for x in ["delta_t", "delta_vel", "vel", "ay", "ax", "power_in", "motor_torque"]:
-            df[x] = 0
 
-        for i, row in (df[::-1] if is_reverse else df).iterrows():
+        for i, row in (df[::-1] if not is_forward else df).iterrows():
             vmax = self.car.max_vel_corner(row["R"])
             AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
             df.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
-                df.loc[i,"ax"], df.loc[i,"power_in"], df.loc["motor_torque"] = accel_func(vel, df.loc[i,"ay"])
-                roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["dist"]])
-                df.loc[i,"delta_t"] = min(roots) if min(roots) > 0 else max(roots)
-                df.loc[i,"delta_vel"] = min(df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
-                df.loc[i,"vel"] = vel + df.loc[i,"delta_vel"]
-                vel = df.loc[i,"vel"]
+                df.loc[i,"ax"], data_transfer = self.car.accel(vel, df.loc[i,"ay"], is_forward)
+                roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["delta_position"]])
+                df.loc[i,"delta_ttime"] = min(roots) if min(roots) > 0 else max(roots)
+                df.loc[i,"delta_velocity"] = min(df.loc[i,"ax"]*df.loc[i,"delta_time"], vmax-vel)
+                df.loc[i,"velocity"] = vel + df.loc[i,"delta_velocity"]
+                vel = df.loc[i,"velocity"]
             else:
                 # car maxed out, no more accel
                 vel = vmax
-                df.loc[i,"vel"] = vel
-                df.loc[i,"delta_t"] = row["dist"]/vel
-                df.loc[i,"ax"], df.loc[i,"delta_vel"] = 0, 0
-        if is_reverse:
+                df.loc[i,"velocity"] = vel
+                df.loc[i,"delta_time"] = row["delta_position"]/vel
+                df.loc[i,"ax"], df.loc[i,"delta_velocity"] = 0, 0
+
+        # TODO: use my own code once I have time - started below
+        # for i, row in (df[::-1] if not is_forward else df).iterrows():
+        #     # step 1: get max possible speed for corner
+        #     df.loc[i, "max_velocity"] = self.car.max_vel_corner(row["R"])
+        #     # step 2: check if above or below max speed for corner
+        #     if vel > df.loc[i, "max_velocity"]:
+        #         vel = df.loc[i, "max_velocity"]
+
+        #     df.loc[i,"ay"] = vel**2/row["R"] if row["R"] != 0 else 0
+        #     df.loc[i,"ax"], data_transfer = self.car.accel(vel, df.loc[i,"ay"], is_forward)
+        #     roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["delta_position"]])
+        #     df.loc[i,"delta_time"] = min(roots) if min(roots) > 0 else max(roots)
+        #     df.loc[i,"delta_velocity"] = min(df.loc[i,"ax"]*df.loc[i,"delta_time"], df.loc[i, "max_velocity"]-vel)
+        #     df.loc[i,"velocity"] = vel + df.loc[i,"delta_velocity"]
+
+        if not is_forward:
             df["ax"]*=-1
         return df
 

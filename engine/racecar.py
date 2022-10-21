@@ -2,7 +2,7 @@ from engine.magic_moment_method.solver_sweeper import generate_GGV
 import pandas as pd
 from scipy.optimize import fsolve
 
-class Racecar:
+class Racecar: 
     def __init__(self, racecar, existing_ggv_file = None):
         self.ggv = pd.read_csv(existing_ggv_file) if existing_ggv_file else None
         self.params = racecar
@@ -19,7 +19,7 @@ class Racecar:
 
         # if velocity is exact
         if closest_vels[1] is None:
-            return self.__interpolate_long_accel(vel, lateral, is_forward)
+            return self.__interpolate_long_accel(vel, lateral, is_forward)[:1]
         
         # for nearest velocities, find long acceleration for given lateral acceleration
         upper_vel_accel, upper_power, upper_torque = self.__interpolate_long_accel(closest_vels[1], lateral, is_forward)
@@ -31,7 +31,8 @@ class Racecar:
         power_interpolated = lower_power * (1 - weight) + upper_power * weight
         torque_interpolated = lower_torque * (1 - weight) + upper_torque * weight
 
-        return long_accel_interpolated, power_interpolated, torque_interpolated
+        long_accel_interpolated = long_accel_interpolated if is_forward else long_accel_interpolated * -1
+        return long_accel_interpolated, power_interpolated
 
     def __interpolate_long_accel(self, vel, lateral_accel, is_forward):
         # step 1: find all intersection segments
@@ -113,10 +114,6 @@ class Racecar:
             lower_vel = max(lower_than) if len(lower_than) > 0 else min(greater_than)
             upper_vel = min(greater_than) if len(greater_than) > 0 else max(lower_than)
         return [lower_vel, upper_vel]
-
-    def deccel(self, vel, lateral):
-        accel, power, torque = self.accel(vel, lateral, False)
-        return accel * -1, 0, 0
 
     def lateral(self, vel):
         if vel < 0:
