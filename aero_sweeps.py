@@ -72,7 +72,7 @@ if __name__ == '__main__':
         df_endurance = df_endurance[["dist",'vel']]
 
         df_endurance['Drag_J'] = easy_driver.params.CdA_tot * df_endurance['vel'] ** 2 * 1.153 / 2 * df_endurance['dist']
-        Drag_kWh = (df_endurance["Drag_J"].sum()/(times[0] * 15 * 1000) * (times[0] * 15)/3600)
+        Drag_kWh = (df_endurance["Drag_J"].sum() / (times[0] * 1000) * (times[0] * 15)/3600)
         print(times)
         print(points)
         results_df.loc[i] = [Cl_A[i], Cd_A[i], points[0], points[1], points[2], points[3], times[0], times[1], times[2], times[3], Drag_kWh, Added_Mass]
