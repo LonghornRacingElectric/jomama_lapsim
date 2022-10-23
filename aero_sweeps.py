@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 import engine
 import engine.magic_moment_method.vehicle_params as vehicles
+import engine.magic_moment_method.state_solver.aerodynamics as Aero
+import engine.magic_moment_method.state_solver.logger as Fuck_this_Logger
 
 # TODO: Move this file into sweeping, gonna have to mess with module imports
 
@@ -40,6 +42,8 @@ skidpad_times = 5.0497
 accel_times = 4.004
 
 easy_driver = engine.Racecar(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"))
+logger = Fuck_this_Logger.Logger()
+aero = Aero.Aerodynamics(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"),logger)
 
 #TODO: Increase results to capture all even times and points in their specific columns, not the entire df
 results_df = pd.DataFrame(columns=["ClA","CdA","endurance_points","autocross_points","skidpad_points","accel_points",
@@ -51,12 +55,22 @@ if __name__ == '__main__':
         #TODO: Look into altering CL distribution to inflence CoP location
         easy_driver.params.ClA_tot = Cl_A[i]
         easy_driver.params.CdA_tot = Cd_A[i]
+        Drag_kWh = 0
+
+        if easy_driver.params.ClA_tot == 0:
+            easy_driver.params.mass_sprung -= 18
+        else:
+            easy_driver.params.mass_sprung += 11*0.45 + 15.770* 0.45 * Drag_kWh #Added battery mass
+
         print("Testing CL_A: " + str(Cl_A[i]) + " and Cd_A: " + str(Cd_A[i]) )
         easy_driver.regenerate_GGV(sweep_range, mesh_size)
         print("GGV Generated!")
         results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,skidpad_times, accel_times).run()
-        #results[0].to_csv("results/endurance_michigan_2019-easy_driver.csv")
-        #results[1].to_csv("results/autocross_michigan_2019-easy_driver.csv")
+        df_endurance = results[0]
+        df_endurance = df_endurance[["dist",'vel']]
+        df_endurance['Drag_kWh'] = easy_driver.params.CdA_tot * df_endurance['vel'] ** 2 * aero.__air_density() / 2 * df_endurance['dist']
+
+        Drag_kWh = df_endurance["Drag_kWh"].sum()/(times[0] * 15 *1000)
         print(times)
         print(points)
         results_df.loc[i] = [Cl_A, Cd_A, points[0], points[1], points[2], points[3], times[0], times[1], times[2], times[3],results[0]]
