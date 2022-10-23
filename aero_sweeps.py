@@ -11,19 +11,18 @@ TEST_MIN = 0
 TEST_MAX = 4
 divisions = 3
 
-#TODO: Apply correct equations from pareto front analysis
-
 K = .06  # lift-induced drag constant
 Cl0 = 0  # lift at 0 induced drag
-Cd0 = .44  # parasitic drag coefficient
-Cl_A = (np.linspace(TEST_MIN, TEST_MAX, divisions))
-Cd_A = 1.2 * (K * (Cl_A - Cl0) ** 2 + Cd0)
-Cl_A *= 1.2
+Cd0 = .44  # parasitic drag coefficien
+refA = 1.2 # reference area, m^2
+Cl = (np.linspace(TEST_MIN, TEST_MAX, divisions))
+Cd_A = refA * (K * (Cl - Cl0) ** 2 + Cd0)
+Cl_A = refA * Cl
 
 # TODO: Upgrade this to reflect the new fit from Andrew Zhang, basically Cl will increase energy consumption (kWh) due to drag
 #           then the extra kWh will correlate to more mass (Andrews equation). Challenge is to correlate drag and kWh.
 #               LapSim should be able to do so given the torque request. If you have questions about it contact Igor Souza
-Aero_mass = 0.3745 * (Cl_A*1.2) ** 2 + 0.0612 * Cl_A + 0.7783  
+Aero_mass = 0.3745 * (Cl_A ** 2) + 0.0612 * Cl_A + 0.7783
 #######################################
 
 #GGV Mesh Parameters
@@ -45,7 +44,7 @@ easy_driver = engine.Racecar(vehicles.Concept2023() )
 #TODO: Increase results to capture all even times and points in their specific columns, not the entire df
 results_df = pd.DataFrame(columns=["ClA","CdA","points","endurance_time"])
 
-if __name__ == '__main__':    
+if __name__ == '__main__':
     for i in range(divisions):
         #TODO: Implement mass changes to the vehicle mass
         #TODO: Look into altering CL distribution to inflence CoP location
