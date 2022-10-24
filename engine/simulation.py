@@ -43,6 +43,7 @@ class Simulation:
         else:
             starting_velocity = 0
             ending_velocity = initial_forward_sim_df["vel"].iloc[initial_forward_sim_df.shape[1]]
+        print(initial_forward_sim_df["vel"])
         self.reverse_sim_results = self.__forward_sim(track_points.copy(deep = True), ending_velocity, True)
         self.forward_sim_results = self.__forward_sim(track_points.copy(deep = True), starting_velocity, False)
     
