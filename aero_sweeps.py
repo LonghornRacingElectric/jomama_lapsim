@@ -46,7 +46,8 @@ easy_driver = engine.Racecar(vehicles.Concept2023(motor_directory="engine/magic_
 
 #TODO: Increase results to capture all even times and points in their specific columns, not the entire df
 results_df = pd.DataFrame(columns=["ClA","CdA","endurance_points","autocross_points","skidpad_points","accel_points",
-        "endurance_time","autocross_time","skidpad_time","accel_time", "drag_energy (kWh)", "Mass Delta (kg)"])
+        "endurance_time","autocross_time","skidpad_time","accel_time", "drag_energy (kWh)", "Mass Delta (kg)", 
+        "Max Long Accel (g)","Max braking Accel (g)", "Max Lat Accel (g)"])
 
 if __name__ == '__main__':
     for i in range(divisions):
@@ -69,13 +70,20 @@ if __name__ == '__main__':
         print("GGV Generated!")
         results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,skidpad_times, accel_times).run()
 
+        df_endurance = results[0]
+        df_endurance = df_endurance[["dist",'vel','pos','ax','ay']]
+        Total_Laps = math.ceil(22000/df_endurance["pos"].max())
+
         print(times)
         print(points)
-        results_df.loc[i] = [Cl_A[i], Cd_A[i], points[0], points[1], points[2], points[3], times[0] * Total_Laps, times[1], times[2], times[3], Drag_kWh, easy_driver.params.mass_sprung - Initial_mass]
+
+        df_endurance_breaking = df_endurance[df_endurance['ax'] < 0]
+        df_endurance_accel = df_endurance[df_endurance['ax'] >= 0]
+
+        results_df.loc[i] = [Cl_A[i], Cd_A[i], points[0], points[1], points[2], points[3], times[0] * Total_Laps,
+                     times[1], times[2], times[3], Drag_kWh, easy_driver.params.mass_sprung - Initial_mass, df_endurance_breaking['ax'].max()/9.81
+                     ,df_endurance_breaking['ax'].max()/9.81, df_endurance['ay'].max()/9.81]
         
-        df_endurance = results[0]
-        df_endurance = df_endurance[["dist",'vel','pos']]
-        Total_Laps = math.ceil(22000/df_endurance["pos"].max())
         df_endurance['Drag_J'] = easy_driver.params.CdA_tot * df_endurance['vel'] ** 2 * 1.153 / 2 * df_endurance['dist']
         Drag_kWh = (df_endurance["Drag_J"].sum() / (times[0] * 1000) * (times[0] * Total_Laps)/3600)
 
