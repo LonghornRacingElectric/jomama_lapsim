@@ -81,8 +81,8 @@ if __name__ == '__main__':
         df_endurance_accel = df_endurance[df_endurance['ax'] >= 0]
 
         results_df.loc[i] = [Cl_A[i], Cd_A[i], points[0], points[1], points[2], points[3], times[0] * Total_Laps,
-                     times[1], times[2], times[3], Drag_kWh, easy_driver.params.mass_sprung - Initial_mass, df_endurance_breaking['ax'].max()/9.81
-                     ,df_endurance_breaking['ax'].max()/9.81, df_endurance['ay'].max()/9.81]
+                     times[1], times[2], times[3], Drag_kWh, easy_driver.params.mass_sprung - Initial_mass, df_endurance_accel['ax'].max()/9.81
+                     ,df_endurance_breaking['ax'].min()/9.81, df_endurance['ay'].max()/9.81]
         
         df_endurance['Drag_J'] = easy_driver.params.CdA_tot * df_endurance['vel'] ** 2 * 1.153 / 2 * df_endurance['dist']
         Drag_kWh = (df_endurance["Drag_J"].sum() / (times[0] * 1000) * (times[0] * Total_Laps)/3600)
