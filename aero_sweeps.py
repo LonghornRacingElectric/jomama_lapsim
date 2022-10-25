@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
         if Cl_A[i] == 0:
             Initial_mass = easy_driver.params.mass_sprung
-            easy_driver.params.mass_sprung += Mass_Delta -18  #Subtracting Mass of Aero Components
+            easy_driver.params.mass_sprung += Mass_Delta - 16  #Subtracting Mass of Aero Components
 
         else:
             easy_driver.params.mass_sprung = Initial_mass + Mass_Delta
