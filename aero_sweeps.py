@@ -65,7 +65,7 @@ Initial_mass = easy_driver.params.mass_sprung
 #TODO: Increase results to capture all even times and points in their specific columns, not the entire df
 #results_df = pd.DataFrame(columns=["ClA","CdA","endurance_points","autocross_points","skidpad_points","accel_points",
 #        "endurance_time","autocross_time","skidpad_time","accel_time", "drag_energy (kWh)", "Mass Delta (kg)", 
-#        "Max Long Accel (g)","Max braking Accel (g)", "Max Lat Accel (g)","CoP Bias"])
+#        "Max Long Accel (g)","Max braking Accel (g)", "Max Lat Accel (g)"])
 results_df = pd.DataFrame(columns=["endurance_points","autocross_points","skidpad_points","accel_points",
         "endurance_time","autocross_time","skidpad_time","accel_time", "cop_bias(%)", "cla_dist","cda_dist"])
 
@@ -146,7 +146,7 @@ if __name__ == '__main__':
 
         #results_df.loc[i] = [Cl_A[i], Cd_A[i], points[0], points[1], points[2], points[3], times[0] * Total_Laps,
         #             times[1], times[2], times[3], Drag_kWh, easy_driver.params.mass_sprung - Initial_mass, df_endurance_accel['ax'].max()/9.81
-        #             ,df_endurance_breaking['ax'].min()/9.81, df_endurance['ay'].max()/9.81, CoP_Target]
+        #             ,df_endurance_breaking['ax'].min()/9.81, df_endurance['ay'].max()/9.81]
         results_df.loc[i] = [points[0], points[1], points[2], points[3], times[0] * Total_Laps,
                      times[1], times[2], times[3], CoP_Target[i], New_ClA_Dist, New_CdA_Dist]
         
