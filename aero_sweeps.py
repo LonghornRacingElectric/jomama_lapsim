@@ -14,7 +14,7 @@ pd.options.mode.chained_assignment = None
 #######################################
 TEST_MIN = 0
 TEST_MAX = 5
-divisions = 1
+divisions = 5
 
 K = 0.06215178719838  # lift-induced drag constant
 Cl0 = 0  # lift at 0 induced drag
@@ -23,7 +23,7 @@ refA = 1.2 # reference area, m^2
 Cl = (np.linspace(TEST_MIN, TEST_MAX, divisions))
 Cd_A = refA * (K * (Cl - Cl0) ** 2 + Cd0)
 Cl_A = refA * Cl
-CoP_Target = np.linspace(40,60,divisions)
+CoP_Target = np.linspace(60,60,divisions)
 #######################################
 
 #GGV Mesh Parameters
@@ -32,7 +32,7 @@ sweep_range = {"body_slip": (-10 * np.pi / 180, 10 * np.pi / 180),
             "velocity" : (3, 30),
             "torque_request": (-1, 1),
             "is_left_diff_bias": (True, False)}
-mesh_size = 5 #Anything below 5 is troublesome, time to generate increases to the forth power of mesh size
+mesh_size = 13 #Anything below 5 is troublesome, time to generate increases to the forth power of mesh size
 
 #TODO: Get most up to date track (I believe Robert is working on it)
 endurance_track = engine.Track("racing_lines/en_mi_2019.csv", 1247.74)
@@ -40,10 +40,10 @@ autocross_track = engine.Track("racing_lines/ax_mi_2019.csv", 50.008)
 skidpad_times = 5.0497
 accel_times = 4.004
 Drag_kWh = 0.6611
-i = 0
-Tries = 5000
-variance = 150
-error = 0.5
+u = 0
+Tries = 2000
+variance = 350
+error = 0.04
 result_DF = []
 result_DG = []
 average_DFR = []
@@ -63,9 +63,11 @@ Total_Drag = easy_driver.params.CdA_tot * 15 ** 2 * 1.153 / 2
 Initial_mass = easy_driver.params.mass_sprung
 
 #TODO: Increase results to capture all even times and points in their specific columns, not the entire df
-results_df = pd.DataFrame(columns=["ClA","CdA","endurance_points","autocross_points","skidpad_points","accel_points",
-        "endurance_time","autocross_time","skidpad_time","accel_time", "drag_energy (kWh)", "Mass Delta (kg)", 
-        "Max Long Accel (g)","Max braking Accel (g)", "Max Lat Accel (g)","CoP Bias"])
+#results_df = pd.DataFrame(columns=["ClA","CdA","endurance_points","autocross_points","skidpad_points","accel_points",
+#        "endurance_time","autocross_time","skidpad_time","accel_time", "drag_energy (kWh)", "Mass Delta (kg)", 
+#        "Max Long Accel (g)","Max braking Accel (g)", "Max Lat Accel (g)","CoP Bias"])
+results_df = pd.DataFrame(columns=["endurance_points","autocross_points","skidpad_points","accel_points",
+        "endurance_time","autocross_time","skidpad_time","accel_time", "cop_bias(%)", "cla_dist","cda_dist"])
 
 if __name__ == '__main__':
     for i in range(divisions):
@@ -75,7 +77,7 @@ if __name__ == '__main__':
         Mass_Delta = 15.770 * 0.45 * (Drag_kWh - 2)
 
         #CoP Sweep
-        while i!= Tries:
+        while u!= Tries:
 
             #Initial distribution based on data from different teams
             DF_Distribution = easy_driver.params.ClA_dist * 1000
@@ -102,15 +104,15 @@ if __name__ == '__main__':
                     math.cos(math.atan(Total_Drag/Total_Downforce)))/(easy_driver.params.wheelbase*easy_driver.params.cg_bias)*100)
             #print(CoP_x)
             #Checks if the moments balance within a 1% range
-            if CoP_Target-error < CoP_x < CoP_Target+error:
+            if CoP_Target[i]-error < CoP_x < CoP_Target[i]+error:
 
              #For each sucessful combination saves the result in a list creating a matrix
 
                 result_DF.append(DF_Distribution)
                 result_DG.append(DG_Distribution)
-                i+=1
-                if i/Tries*100 == 20 or i/Tries*100 == 40 or i/Tries*100 == 60 or i/Tries*100 == 80 or i/Tries*100 == 100:
-                    print('CoP Simulation Progress {:.2f}%'.format(i/Tries*100))
+                u+=1
+                if u/Tries*100 == 20 or u/Tries*100 == 40 or u/Tries*100 == 60 or u/Tries*100 == 80 or u/Tries*100 == 100:
+                    print('CoP Simulation Progress {:.2f}%'.format(u/Tries*100))
 
         New_ClA_Dist = sum(result_DF) / len(result_DF)
         New_CdA_Dist = sum(result_DG) / len(result_DG)
@@ -118,6 +120,7 @@ if __name__ == '__main__':
 
         easy_driver.params.ClA_dist = New_ClA_Dist/1000
         easy_driver.params.CdA_dist = New_CdA_Dist/1000
+        #easy_driver.params.brake_bias_ratio = CoP_Target[i]
 
         #if Cl_A[i] == 0:
         #    Initial_mass = easy_driver.params.mass_sprung
@@ -141,9 +144,11 @@ if __name__ == '__main__':
         df_endurance_breaking = df_endurance[df_endurance['ax'] < 0]
         df_endurance_accel = df_endurance[df_endurance['ax'] >= 0]
 
-        results_df.loc[i] = [Cl_A[i], Cd_A[i], points[0], points[1], points[2], points[3], times[0] * Total_Laps,
-                     times[1], times[2], times[3], Drag_kWh, easy_driver.params.mass_sprung - Initial_mass, df_endurance_accel['ax'].max()/9.81
-                     ,df_endurance_breaking['ax'].min()/9.81, df_endurance['ay'].max()/9.81, CoP_Target]
+        #results_df.loc[i] = [Cl_A[i], Cd_A[i], points[0], points[1], points[2], points[3], times[0] * Total_Laps,
+        #             times[1], times[2], times[3], Drag_kWh, easy_driver.params.mass_sprung - Initial_mass, df_endurance_accel['ax'].max()/9.81
+        #             ,df_endurance_breaking['ax'].min()/9.81, df_endurance['ay'].max()/9.81, CoP_Target]
+        results_df.loc[i] = [points[0], points[1], points[2], points[3], times[0] * Total_Laps,
+                     times[1], times[2], times[3], CoP_Target[i], New_ClA_Dist, New_CdA_Dist]
         
         df_endurance['Drag_J'] = easy_driver.params.CdA_tot * df_endurance['vel'] ** 2 * 1.153 / 2 * df_endurance['dist']
         Drag_kWh = (df_endurance["Drag_J"].sum() / (times[0] * 1000) * (times[0] * Total_Laps)/3600)
