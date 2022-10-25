@@ -33,7 +33,7 @@ class Simulation:
         track_points = track_points.drop(0)
         track_points = track_points.drop(1)
 
-        for x in ["delta_t", "delta_vel", "vel", "ay", "ax", "power_in", "motor_torque", "motor_efficiency"]:
+        for x in ["delta_t", "delta_vel", "vel", "ay", "ax", "power_into_inverter", "motor_torque", "motor_efficiency"]:
             track_points[x] = 0
 
         initial_forward_sim_df = self.__forward_sim(track_points.copy(deep = True), 20, False)
@@ -44,6 +44,7 @@ class Simulation:
             starting_velocity = 0
             ending_velocity = initial_forward_sim_df["vel"].iloc[initial_forward_sim_df.shape[1]]
         print(initial_forward_sim_df["vel"])
+        print(ending_velocity)
         self.reverse_sim_results = self.__forward_sim(track_points.copy(deep = True), ending_velocity, True)
         self.forward_sim_results = self.__forward_sim(track_points.copy(deep = True), starting_velocity, False)
     
@@ -79,7 +80,7 @@ class Simulation:
             AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
             df.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
-                df.loc[i,"ax"], df.loc[i,"power_in"], df.loc[i, "motor_torque"], df.loc[i ,"motor_efficiency"] = accel_func(vel, df.loc[i,"ay"])
+                df.loc[i,"ax"], df.loc[i,"power_into_inverter"], df.loc[i, "motor_torque"], df.loc[i ,"motor_efficiency"] = accel_func(vel, df.loc[i,"ay"])
                 roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["dist"]])
                 df.loc[i,"delta_t"] = min(roots) if min(roots) > 0 else max(roots)
                 df.loc[i,"delta_vel"] = min(df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)

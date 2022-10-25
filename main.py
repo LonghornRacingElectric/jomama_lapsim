@@ -37,7 +37,7 @@ def main():
 
     #     p_l_results, points, times = engine.Competition(lapsim_racecar, endurance_track, autocross_track,
     #                         skidpad_times, accel_times).run()
-    #     energy = sum(p_l_results[0]["delta_t"] * p_l_results[0]["power_in"])
+    #     energy = sum(p_l_results[0]["delta_t"] * p_l_results[0]["power_into_inverter"])
     #     print(times)
     #     print(points)
     #     results_df.loc[index] = [p_l, points, times, energy]
@@ -48,9 +48,9 @@ def main():
     ####################################
     ### Example: One-off simulations ###
 
-    lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
-    #lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
-    #lapsim_racecar.save_ggv("results/GGV.csv")
+    #lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
+    lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
+    lapsim_racecar.save_ggv("results/GGV.csv")
     #endurance_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
     #autocross_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
     comp = engine.Competition(lapsim_racecar, endurance_track, autocross_track,
@@ -59,8 +59,8 @@ def main():
     results[0].to_csv("results/endurance_michigan_2019-concept_2023.csv")
     results[1].to_csv("results/autocross_michigan_2019-concept_2023.csv")
     results[3].to_csv("results/acceleration-concept_2023.csv")
-    comp.autocross_sim.forward_sim_results.to_csv("results/forward-autocross_michigan_2019-concept_2023.csv")
-    comp.autocross_sim.reverse_sim_results.to_csv("results/reverse-autocross_michigan_2019-concept_2023.csv")
+    # comp.autocross_sim.forward_sim_results.to_csv("results/forward-autocross_michigan_2019-concept_2023.csv")
+    # comp.autocross_sim.reverse_sim_results.to_csv("results/reverse-autocross_michigan_2019-concept_2023.csv")
     print(times)
     print(points)
 

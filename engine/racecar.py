@@ -39,11 +39,11 @@ class Racecar:
         velocity_slice_hull = self.ggv[self.ggv["s_dot"] == vel]
         exactmatch = velocity_slice_hull[velocity_slice_hull["vehicle_accelerations_NTB_1"] == lateral_accel]
         intersections = []
-        power_in = []
+        power_into_inverter = []
         torque_in = []
         e_in = []
         if not exactmatch.empty:
-            return exactmatch["vehicle_accelerations_NTB_0"], exactmatch["power_input"], exactmatch["motor_torque"], exactmatch["motor_efficiency"]
+            return exactmatch["vehicle_accelerations_NTB_0"], exactmatch["power_into_inverter"], exactmatch["motor_torque"], exactmatch["motor_efficiency"]
         else:
             previous_point = velocity_slice_hull.iloc[-1]
             for _, point in velocity_slice_hull.iterrows():
@@ -62,9 +62,9 @@ class Racecar:
                     dist_2 = ((x_in - x2) ** 2 + (y_in - y2) ** 2)**0.5
                     weight_2 = dist_1/ (dist_1 + dist_2)
                     weight_1 = 1 - weight_2
-                    power_1 = point["power_input"] * weight_1
-                    power_2 = previous_point["power_input"] * weight_2
-                    power_in.append(power_1 + power_2)
+                    power_1 = point["power_into_inverter"] * weight_1
+                    power_2 = previous_point["power_into_inverter"] * weight_2
+                    power_into_inverter.append(power_1 + power_2)
 
                     torque_1 = point["motor_torque"] * weight_1
                     torque_2 = previous_point["motor_torque"] * weight_2
@@ -83,13 +83,13 @@ class Racecar:
             if len(intersections) == 0:
                 index = velocity_slice_hull["vehicle_accelerations_NTB_1"].idxmax()
                 accel = velocity_slice_hull.loc[index]["vehicle_accelerations_NTB_0"]
-                power = velocity_slice_hull.loc[index]["power_input"]
+                power = velocity_slice_hull.loc[index]["power_into_inverter"]
                 torque = velocity_slice_hull.loc[index]["motor_torque"]
                 eff = velocity_slice_hull.loc[index]["motor_efficiency"]
                 return accel, power, torque, eff
             index = intersections.index(max(intersections))
             accel = max(intersections)
-            power = power_in[index]
+            power = power_into_inverter[index]
             torque = torque_in[index]
             eff = e_in[index]
             return accel, power, torque, eff
@@ -97,13 +97,13 @@ class Racecar:
             if len(intersections) == 0:
                 index = velocity_slice_hull["vehicle_accelerations_NTB_1"].idxmin()
                 accel = velocity_slice_hull.loc[index]["vehicle_accelerations_NTB_0"]
-                power = velocity_slice_hull.loc[index]["power_input"]
+                power = velocity_slice_hull.loc[index]["power_into_inverter"]
                 torque = velocity_slice_hull.loc[index]["motor_torque"]
                 eff = velocity_slice_hull.loc[index]["motor_efficiency"]
                 return accel, power, torque, eff
             index = intersections.index(min(intersections))
             accel = min(intersections)
-            power = power_in[index]
+            power = power_into_inverter[index]
             torque = torque_in[index]
             eff = e_in[index]
             return accel, power, torque, eff
