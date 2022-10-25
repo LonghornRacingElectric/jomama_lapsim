@@ -9,7 +9,8 @@ class Simulation:
 
         self.time = 0
         self.results = None
-        self.reverse_sim = None
+        self.reverse_sim_results = None
+        self.forward_sim_results = None
 
     def run(self):
         if self.is_skidpad:
@@ -32,17 +33,26 @@ class Simulation:
         track_points = track_points.drop(0)
         track_points = track_points.drop(1)
 
-        initial_forward_sim_df = self.__forward_sim(track_points.copy(deep = True), 20, False) # TODO: starting speed?
-        starting_vel = initial_forward_sim_df["vel"].iloc[initial_forward_sim_df.shape[1]]
-        reverse_sim_df = self.__forward_sim(track_points.copy(deep = True), starting_vel, True)
-        self.reverse_sim = reverse_sim_df
-        forward_sim_df = self.__forward_sim(track_points.copy(deep = True), starting_vel, False)
+        for x in ["delta_t", "delta_vel", "vel", "ay", "ax", "power_into_inverter", "motor_torque", "motor_efficiency"]:
+            track_points[x] = 0
+
+        initial_forward_sim_df = self.__forward_sim(track_points.copy(deep = True), 20, False)
+        if self.track.track_type == "endurance":
+            starting_velocity = initial_forward_sim_df["vel"].iloc[initial_forward_sim_df.shape[1]]
+            ending_velocity = starting_velocity
+        else:
+            starting_velocity = 0
+            ending_velocity = initial_forward_sim_df["vel"].iloc[initial_forward_sim_df.shape[1]]
+        print(initial_forward_sim_df["vel"])
+        print(ending_velocity)
+        self.reverse_sim_results = self.__forward_sim(track_points.copy(deep = True), ending_velocity, True)
+        self.forward_sim_results = self.__forward_sim(track_points.copy(deep = True), starting_velocity, False)
     
         ### COMBINE RESULTS
         time, rows = 0, []
         for index, row in track_points.iterrows():
-            reverse_row = reverse_sim_df.loc[index]
-            forward_row = forward_sim_df.loc[index]
+            reverse_row = self.reverse_sim_results.loc[index]
+            forward_row = self.forward_sim_results.loc[index]
             if (forward_row["vel"] - reverse_row["vel"]) < 0:
                 time += forward_row.loc["delta_t"]
                 rows.append(np.array([*forward_row, time]))
@@ -50,7 +60,7 @@ class Simulation:
                 time += reverse_row.loc["delta_t"]
                 rows.append(np.array([*reverse_row, time]))
         
-        self.results = pd.DataFrame(rows, columns=[*reverse_sim_df.columns, "time"])
+        self.results = pd.DataFrame(rows, columns=[*self.reverse_sim_results.columns, "time"])
         self.time = self.results["time"].max()
         return self.results, self.time
     
@@ -63,15 +73,14 @@ class Simulation:
     def __forward_sim(self, df, starting_vel, is_reverse):
         accel_func = self.car.deccel if is_reverse else self.car.accel
         vel = starting_vel
-        for x in ["delta_t", "delta_vel", "vel", "ay", "ax", "power_in", "motor_torque"]:
-            df[x] = 0
 
         for i, row in (df[::-1] if is_reverse else df).iterrows():
             vmax = self.car.max_vel_corner(row["R"])
+            df.loc[i ,"max_vel"] = vmax
             AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
             df.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
-                df.loc[i,"ax"], df.loc[i,"power_in"], df.loc["motor_torque"] = accel_func(vel, df.loc[i,"ay"])
+                df.loc[i,"ax"], df.loc[i,"power_into_inverter"], df.loc[i, "motor_torque"], df.loc[i ,"motor_efficiency"] = accel_func(vel, df.loc[i,"ay"])
                 roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["dist"]])
                 df.loc[i,"delta_t"] = min(roots) if min(roots) > 0 else max(roots)
                 df.loc[i,"delta_vel"] = min(df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
