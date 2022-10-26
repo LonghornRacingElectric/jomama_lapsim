@@ -55,9 +55,6 @@ average_DGR = []
 average_DGF = []
 average_DGU = []
 
-#TODO: Have
-
-
 vehicle = engine.Racecar(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"))
 #logger = Fuck_this_Logger.Logger()
 #aero = Aero.Aerodynamics(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"),logger)
