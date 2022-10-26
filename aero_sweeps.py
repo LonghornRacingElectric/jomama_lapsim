@@ -25,7 +25,11 @@ refA = 1.2 # reference area, m^2
 Cl = (np.linspace(TEST_MIN, TEST_MAX, divisions))
 Cd_A = refA * (K * (Cl - Cl0) ** 2 + Cd0)
 Cl_A = refA * Cl
+
 CoP_Target = np.linspace(40,60,divisions)
+Tries = 2000
+variance = 350
+error = 0.25
 
 #######################################
 
@@ -42,9 +46,6 @@ autocross_track = engine.Track("racing_lines/ax_mi_2019.csv", 50.008)
 skidpad_times = 5.0497
 accel_times = 4.004
 Drag_kWh = 0.6611
-Tries = 2000
-variance = 350
-error = 0.25
 result_DF = []
 result_DG = []
 average_DFR = []
