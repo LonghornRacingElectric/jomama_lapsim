@@ -16,7 +16,7 @@ pd.options.mode.chained_assignment = None
 Cl_Sweep = True
 TEST_MIN = 0
 TEST_MAX = 5
-divisions = 2
+divisions = 3
 
 K = 0.06215178719838  # lift-induced drag constant
 Cl0 = 0  # lift at 0 induced drag
@@ -57,13 +57,14 @@ average_DGU = []
 
 #TODO: Have
 
-easy_driver = engine.Racecar(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"))
+
+vehicle = engine.Racecar(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"))
 #logger = Fuck_this_Logger.Logger()
 #aero = Aero.Aerodynamics(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"),logger)
 
-Total_Downforce = easy_driver.params.CdA_tot * 15 ** 2 * 1.153 / 2
-Total_Drag = easy_driver.params.CdA_tot * 15 ** 2 * 1.153 / 2
-Initial_mass = easy_driver.params.mass_sprung
+Total_Downforce = vehicle.params.CdA_tot * 15 ** 2 * 1.153 / 2
+Total_Drag = vehicle.params.CdA_tot * 15 ** 2 * 1.153 / 2
+Initial_mass = vehicle.params.mass_sprung
 
 if __name__ == '__main__':
     if Cl_Sweep:
@@ -74,26 +75,26 @@ if __name__ == '__main__':
         results_df = pd.DataFrame(columns=["endurance_points","autocross_points","skidpad_points","accel_points",
                 "endurance_time","autocross_time","skidpad_time","accel_time", "cop_bias(%)", "cla_dist","cda_dist"])
 
-    
+
     for i in range(divisions):
         Mass_Delta = 15.770 * 0.45 * (Drag_kWh - 2)
 
         if Cl_Sweep:
             Mass_Delta = 15.770 * 0.45 * (Drag_kWh - 2)
-            easy_driver.params.ClA_tot = Cl_A[i]
-            easy_driver.params.CdA_tot = Cd_A[i]
+            vehicle.params.ClA_tot = Cl_A[i]
+            vehicle.params.CdA_tot = Cd_A[i]
 
             if Cl_A[i] == 0:
-                    Initial_mass = easy_driver.params.mass_sprung
-                    easy_driver.params.mass_sprung += Mass_Delta - 16  #Subtracting Mass of Aero Components
+                Initial_mass = vehicle.params.mass_sprung
+                vehicle.params.mass_sprung += Mass_Delta - 16  #Subtracting Mass of Aero Components
 
             else:
-                    easy_driver.params.mass_sprung = Initial_mass + Mass_Delta
+                vehicle.params.mass_sprung = Initial_mass + Mass_Delta
 
             print("Testing CL_A: " + str(Cl_A[i]) + " and Cd_A: " + str(Cd_A[i]) )
-            easy_driver.regenerate_GGV(sweep_range, mesh_size)
+            vehicle.regenerate_GGV(sweep_range, mesh_size)
             print("GGV Generated!")
-            results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,skidpad_times, accel_times).run()
+            results, points, times = engine.Competition(vehicle, endurance_track, autocross_track,skidpad_times, accel_times).run()
 
             df_endurance = results[0]
             df_endurance = df_endurance[["dist",'vel','pos','ax','ay']]
@@ -101,15 +102,16 @@ if __name__ == '__main__':
 
             print(times)
             print(points)
+            print(i)
 
             df_endurance_breaking = df_endurance[df_endurance['ax'] < 0]
             df_endurance_accel = df_endurance[df_endurance['ax'] >= 0]
 
             results_df.loc[i] = [Cl_A[i], Cd_A[i], points[0], points[1], points[2], points[3], times[0] * Total_Laps,
-                                times[1], times[2], times[3], Drag_kWh, easy_driver.params.mass_sprung - Initial_mass, df_endurance_accel['ax'].max()/9.81
+                                times[1], times[2], times[3], Drag_kWh, vehicle.params.mass_sprung - Initial_mass, df_endurance_accel['ax'].max()/9.81
                                 ,df_endurance_breaking['ax'].min()/9.81, df_endurance['ay'].max()/9.81]
 
-            df_endurance['Drag_J'] = easy_driver.params.CdA_tot * df_endurance['vel'] ** 2 * 1.153 / 2 * df_endurance['dist']
+            df_endurance['Drag_J'] = vehicle.params.CdA_tot * df_endurance['vel'] ** 2 * 1.153 / 2 * df_endurance['dist']
             Drag_kWh = (df_endurance["Drag_J"].sum() / (times[0] * 1000) * (times[0] * Total_Laps)/3600)
 
         else:
@@ -118,8 +120,8 @@ if __name__ == '__main__':
             while u!= Tries:
 
                 #Initial distribution based on data from different teams
-                DF_Distribution = easy_driver.params.ClA_dist * 1000
-                DG_Distribution = easy_driver.params.CdA_dist * 1000
+                DF_Distribution = vehicle.params.ClA_dist * 1000
+                DG_Distribution = vehicle.params.CdA_dist * 1000
 
                 #Shuffles the order at which the distributions vary, this way we can assure the process is completely random
                 first_list = [0, 1, 2]
@@ -134,12 +136,12 @@ if __name__ == '__main__':
                 DG_Distribution[first_list[2]] += (-sum(DG_Distribution) + 1000)
 
                 #Calculates the total moment around the CoP of the full car
-                Total = - easy_driver.params.CoP[1][2]*DG_Distribution[1]*Total_Drag + easy_driver.params.CoP[0][0]*DF_Distribution[0]*Total_Downforce - \
-                        easy_driver.params.CoP[0][2]*DG_Distribution[0]*Total_Drag - easy_driver.params.CoP[2][2]*DG_Distribution[2]*Total_Drag - \
-                        easy_driver.params.CoP[2][0]*DF_Distribution[2]*Total_Downforce - easy_driver.params.CoP[1][0]*DF_Distribution[1]*Total_Downforce
+                Total = - vehicle.params.CoP[1][2]*DG_Distribution[1]*Total_Drag + vehicle.params.CoP[0][0]*DF_Distribution[0]*Total_Downforce - \
+                        vehicle.params.CoP[0][2]*DG_Distribution[0]*Total_Drag - vehicle.params.CoP[2][2]*DG_Distribution[2]*Total_Drag - \
+                        vehicle.params.CoP[2][0]*DF_Distribution[2]*Total_Downforce - vehicle.params.CoP[1][0]*DF_Distribution[1]*Total_Downforce
 
                 CoP_x = abs((Total* 0.001/((Total_Downforce ** 2 + Total_Drag ** 2) ** 0.5) *
-                        math.cos(math.atan(Total_Drag/Total_Downforce)))/(easy_driver.params.wheelbase*easy_driver.params.cg_bias)*100)
+                        math.cos(math.atan(Total_Drag/Total_Downforce)))/(vehicle.params.wheelbase*vehicle.params.cg_bias)*100)
 
                 #print(CoP_x)
                 #Checks if the moments balance within a % range
@@ -156,12 +158,12 @@ if __name__ == '__main__':
             New_CdA_Dist = sum(result_DG) / len(result_DG)
             print(New_ClA_Dist)
 
-            easy_driver.params.ClA_dist = New_ClA_Dist/1000
-            easy_driver.params.CdA_dist = New_CdA_Dist/1000
+            vehicle.params.ClA_dist = New_ClA_Dist/1000
+            vehicle.params.CdA_dist = New_CdA_Dist/1000
 
-            easy_driver.regenerate_GGV(sweep_range, mesh_size)
+            vehicle.regenerate_GGV(sweep_range, mesh_size)
             print("GGV Generated!")
-            results, points, times = engine.Competition(easy_driver, endurance_track, autocross_track,skidpad_times, accel_times).run()
+            results, points, times = engine.Competition(vehicle, endurance_track, autocross_track,skidpad_times, accel_times).run()
 
             df_endurance = results[0]
             df_endurance = df_endurance[["dist",'vel','pos','ax','ay']]
@@ -170,7 +172,7 @@ if __name__ == '__main__':
             print(times)
             print(points)
 
-            results_df.loc[i] = [points[0], points[1], points[2], points[3], times[0] * Total_Laps,
+            results_df.iloc[i] = [points[0], points[1], points[2], points[3], times[0] * Total_Laps,
                                 times[1], times[2], times[3], CoP_Target[i], New_ClA_Dist, New_CdA_Dist]
 
     if Cl_Sweep == True:
