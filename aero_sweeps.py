@@ -109,7 +109,7 @@ if __name__ == '__main__':
 
             results_df.to_csv("results/Cl_sweep-Concept2023.csv")
 
-    else:
+        else:
             results_df = pd.DataFrame(columns=["endurance_points","autocross_points","skidpad_points","accel_points",
                             "endurance_time","autocross_time","skidpad_time","accel_time", "cop_bias(%)", "cla_dist","cda_dist"])
             u = 0
