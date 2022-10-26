@@ -55,7 +55,7 @@ average_DGR = []
 average_DGF = []
 average_DGU = []
 
-#TODO: Have 
+#TODO: Have
 
 easy_driver = engine.Racecar(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"))
 #logger = Fuck_this_Logger.Logger()
@@ -66,14 +66,19 @@ Total_Drag = easy_driver.params.CdA_tot * 15 ** 2 * 1.153 / 2
 Initial_mass = easy_driver.params.mass_sprung
 
 if __name__ == '__main__':
+    if Cl_Sweep:
+        results_df = pd.DataFrame(columns=["ClA","CdA","endurance_points","autocross_points","skidpad_points","accel_points",
+            "endurance_time","autocross_time","skidpad_time","accel_time", "drag_energy (kWh)", "Mass Delta (kg)",
+            "Max Long Accel (g)","Max braking Accel (g)", "Max Lat Accel (g)"])
+    else:
+        results_df = pd.DataFrame(columns=["endurance_points","autocross_points","skidpad_points","accel_points",
+                "endurance_time","autocross_time","skidpad_time","accel_time", "cop_bias(%)", "cla_dist","cda_dist"])
+
+    
     for i in range(divisions):
         Mass_Delta = 15.770 * 0.45 * (Drag_kWh - 2)
 
-        if Cl_Sweep == True:
-            results_df = pd.DataFrame(columns=["ClA","CdA","endurance_points","autocross_points","skidpad_points","accel_points",
-                    "endurance_time","autocross_time","skidpad_time","accel_time", "drag_energy (kWh)", "Mass Delta (kg)", 
-                    "Max Long Accel (g)","Max braking Accel (g)", "Max Lat Accel (g)"])
-
+        if Cl_Sweep:
             Mass_Delta = 15.770 * 0.45 * (Drag_kWh - 2)
             easy_driver.params.ClA_tot = Cl_A[i]
             easy_driver.params.CdA_tot = Cd_A[i]
@@ -108,8 +113,6 @@ if __name__ == '__main__':
             Drag_kWh = (df_endurance["Drag_J"].sum() / (times[0] * 1000) * (times[0] * Total_Laps)/3600)
 
         else:
-            results_df = pd.DataFrame(columns=["endurance_points","autocross_points","skidpad_points","accel_points",
-                    "endurance_time","autocross_time","skidpad_time","accel_time", "cop_bias(%)", "cla_dist","cda_dist"])
             u = 0
             #CoP Sweep
             while u!= Tries:
@@ -169,7 +172,7 @@ if __name__ == '__main__':
 
             results_df.loc[i] = [points[0], points[1], points[2], points[3], times[0] * Total_Laps,
                                 times[1], times[2], times[3], CoP_Target[i], New_ClA_Dist, New_CdA_Dist]
-                
+
     if Cl_Sweep == True:
         results_df.to_csv("results/Cl_sweep-Concept2023.csv")
     else:
