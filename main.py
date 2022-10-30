@@ -68,7 +68,7 @@ def main():
     gear_ratio = [2.769230769, 2.846153846, 2.923076923, 3, 3.083333333, 3.166666667, 3.230769231, 3.25, 
     3.307692308, 3.384615385, 3.461538462, 3.5, 3.583333333, 3.615384615, 3.692307692, 3.75, 3.833333333, 
     3.916666667, 4, 4.076923077, 4.153846154, 4.25, 4.333333333, 4.416666667, 4.5]
-    pack_voltage = (454-378)/2
+    pack_voltage = 3.6*108 #3.6V*108s
     lapsim_racecar.params.max_motor_speed = (pack_voltage/500) * 5500 * (2 * np.pi / 60)
     results_df = pd.DataFrame(columns=["gear_ratio", "points", "times", "endurance_battery_capacity"])
     for index, g_r in enumerate(gear_ratio):
