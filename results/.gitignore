@@ -1,1 +1,2 @@
 *.csv
+!GGV_initial_guesses.csv

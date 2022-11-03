@@ -43,8 +43,6 @@ class Simulation:
         else:
             starting_velocity = 0
             ending_velocity = initial_forward_sim_df["vel"].iloc[initial_forward_sim_df.shape[1]]
-        print(initial_forward_sim_df["vel"])
-        print(ending_velocity)
         self.reverse_sim_results = self.__forward_sim(track_points.copy(deep = True), ending_velocity, True)
         self.forward_sim_results = self.__forward_sim(track_points.copy(deep = True), starting_velocity, False)
     
@@ -77,7 +75,7 @@ class Simulation:
         for i, row in (df[::-1] if is_reverse else df).iterrows():
             vmax = self.car.max_vel_corner(row["R"])
             df.loc[i ,"max_vel"] = vmax
-            AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
+            AY = self.car.lateral(self.car.max_vel()) # accel capabilities
             df.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
                 df.loc[i,"ax"], df.loc[i,"power_into_inverter"], df.loc[i, "motor_torque"], df.loc[i ,"motor_efficiency"] = accel_func(vel, df.loc[i,"ay"])

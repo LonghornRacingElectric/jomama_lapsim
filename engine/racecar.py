@@ -6,12 +6,27 @@ class Racecar:
     def __init__(self, racecar, existing_ggv_file = None):
         self.ggv = pd.read_csv(existing_ggv_file) if existing_ggv_file else None
         self.params = racecar
+        try:
+            self.initial_guesses = pd.read_csv("results/GGV_initial_guesses.csv")
+        except:
+            self.initial_guesses = None
 
+    def recreate_initial_guesses(self, sweep_range, mesh):
+        _, df = generate_GGV(self.params, sweep_range, mesh, return_all_points = True)
+        columns_to_save = ["heave", "x_double_dot", "y_double_dot", "yaw_acceleration", "roll", "pitch",
+                         "front_left_tire_slip_ratio", "front_right_tire_slip_ratio", "rear_left_tire_slip_ratio", "rear_right_tire_slip_ratio",
+                         "s_dot", "body_slip", "steered_angle", "torque_request", "is_left_diff_bias"]
+        self.initial_guesses = df[columns_to_save]
+        self.initial_guesses.to_csv("results/GGV_initial_guesses.csv")
+        
     def regenerate_GGV(self, sweep_range, mesh):
-        self.ggv = generate_GGV(self.params, sweep_range, mesh)
+        self.ggv = generate_GGV(self.params, sweep_range, mesh, initial_guesses = self.initial_guesses)
     
     def save_ggv(self, file_target):
         self.ggv.to_csv(file_target)
+
+    def max_vel(self):
+        return self.params.max_motor_speed * self.params.rear_tire_radius / self.params.diff_radius * self.params.motor_radius
 
     def accel(self, vel, lateral, is_forward = True):
         # Find closest velocities
@@ -52,14 +67,19 @@ class Racecar:
                     (previous_point["vehicle_accelerations_NTB_1"] < lateral_accel and point["vehicle_accelerations_NTB_1"] > lateral_accel)):
                     y2, y1 = previous_point["vehicle_accelerations_NTB_1"], point["vehicle_accelerations_NTB_1"]
                     x2, x1 = previous_point["vehicle_accelerations_NTB_0"], point["vehicle_accelerations_NTB_0"]
-                    m = (y2-y1)/(x2-x1)
-                    b = y1 - m * x1
-                    y_in = lateral_accel
-                    # y = mx + b
-                    x_in = (y_in - b)/m
+                    if x1 != x2:
+                        m = (y2-y1)/(x2-x1)
+                        b = y1 - m * x1
+                        y_in = lateral_accel
+                        # y = mx + b
+                        x_in = (y_in - b)/m
 
-                    dist_1 = ((x_in - x1) ** 2 + (y_in - y1) ** 2)**0.5
-                    dist_2 = ((x_in - x2) ** 2 + (y_in - y2) ** 2)**0.5
+                        dist_1 = ((x_in - x1) ** 2 + (y_in - y1) ** 2)**0.5
+                        dist_2 = ((x_in - x2) ** 2 + (y_in - y2) ** 2)**0.5
+                    else:
+                        x_in = x1
+                        dist_1, dist_2 = 0.5, 0.5
+
                     weight_2 = dist_1/ (dist_1 + dist_2)
                     weight_1 = 1 - weight_2
                     power_1 = point["power_into_inverter"] * weight_1
@@ -145,7 +165,7 @@ class Racecar:
     def max_vel_corner(self, radius):
         try:
             if radius > 80 or radius == 0:
-                return self.params.max_vel
+                return self.max_vel()
             # TODO: FIX THIS BULLSHIT
             if radius < 7:
                 radius = 7
@@ -156,4 +176,4 @@ class Racecar:
         except:
             print(radius)
             raise Exception
-        return vel_corner if vel_corner < self.params.max_vel else self.params.max_vel
+        return vel_corner if vel_corner < self.max_vel() else self.max_vel()
