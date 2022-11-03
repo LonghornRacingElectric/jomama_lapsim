@@ -5,7 +5,7 @@ import pandas as pd
 
 def main():
     # NOTE: this requires a GGV to be pre generated (second input)
-    lapsim_racecar = engine.Racecar(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff208.csv"))
+    lapsim_racecar = engine.Racecar(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"))
     #lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
     endurance_track = engine.Track("racing_lines/en_mi_2019.csv", 1247.74, track_type="endurance")
     autocross_track = engine.Track("racing_lines/ax_mi_2019.csv", 50.008*.9)
@@ -18,7 +18,7 @@ def main():
             "velocity" : (3, 30),
             "torque_request": (-1, 1),
             "is_left_diff_bias": (True, False)}
-    mesh_size = 11 # NOTE: MAKE SURE THIS IS ODD
+    mesh_size = 13 # NOTE: MAKE SURE THIS IS ODD
 
 
     ##########################
@@ -100,32 +100,62 @@ def main():
 
 
 
-    # 208 gear ratio sweep for both pack voltages
-    gear_ratio = [ 3.75, 3.833333333, 3.916666667, 4, 4.083333333, 4.166666667, 4.25,
-4.333333333, 4.416666667, 4.5, 4.583333333, 4.666666667, 4.75, 4.833333333, 4.916666667,
-5, 5.083333333, 5.166666667, 5.25, 5.333333333, 5.416666667, 5.5, 5.583333333, 5.666666667,
-5.75]
+#     # 208 gear ratio sweep for both pack voltages
+#     gear_ratio = [3.75, 3.833333333, 3.916666667, 4, 4.083333333, 4.166666667, 4.25,
+# 4.333333333, 4.416666667, 4.5, 4.583333333, 4.666666667, 4.75, 4.833333333, 4.916666667,
+# 5, 5.083333333, 5.166666667, 5.25, 5.333333333, 5.416666667, 5.5, 5.583333333, 5.666666667,
+# 5.75]
+#     pack_voltage = 3.6*108 #3.6V*108s
+#     lapsim_racecar.params.max_motor_speed = 6000 * (2 * np.pi / 60)
+#     lapsim_racecar.params.max_torque = 140
+#     lapsim_racecar.params.mass_sprung = 486 * (0.4359) - 2 * lapsim_racecar.params.mass_unsprung_front - 2 * lapsim_racecar.params.mass_unsprung_rear + lapsim_racecar.params.driver_mass # kg
+#     results_df = pd.DataFrame(columns=["gear_ratio", "points", "times", "endurance_battery_capacity"])
+#     for index, g_r in enumerate(gear_ratio):
+#         lapsim_racecar.params.diff_radius = g_r
+#         lapsim_racecar.params.max_vel = (lapsim_racecar.params.max_motor_speed/g_r)*lapsim_racecar.params.rear_tire_radius
+#         lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
+
+#         # If a new racing line is needed (i.e. trackwidth changes), enable these lines
+#         #endurance_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
+#         #autocross_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
+
+#         g_r_results, points, times = engine.Competition(lapsim_racecar, endurance_track, autocross_track,
+#                             skidpad_times, accel_times).run()
+#         energy = sum(g_r_results[0]["delta_t"] * g_r_results[0]["power_into_inverter"])
+#         print(times)
+#         print(points)
+#         results_df.loc[index] = [g_r, points, times, energy]
+#         g_r_results[0].to_csv(f"results/g_r_208_{str(g_r)}-endurance-concept_2023.csv")
+#     results_df.to_csv("results/g_r_208_sweep-concept_2023.csv")
+
+
+
+# 228 gear ratio sweep for both pack voltages
+    pow_lim = [80000, 77000, 74000, 71000, 68000, 65000, 62000]
+    gear_ratio = 3.75
     pack_voltage = 3.6*108 #3.6V*108s
-    lapsim_racecar.params.max_motor_speed = (pack_voltage/350) * 6000 * (2 * np.pi / 60)
-    lapsim_racecar.params.max_torque = 140
-    results_df = pd.DataFrame(columns=["gear_ratio", "points", "times", "endurance_battery_capacity"])
-    for index, g_r in enumerate(gear_ratio):
-        lapsim_racecar.params.diff_radius = g_r
-        lapsim_racecar.params.max_vel = (lapsim_racecar.params.max_motor_speed/g_r)*lapsim_racecar.params.rear_tire_radius
+    lapsim_racecar.params.max_motor_speed = (pack_voltage/500) * 5500 * (2 * np.pi / 60)
+    lapsim_racecar.params.max_torque = 230
+    lapsim_racecar.params.mass_sprung = 490 * (0.4359) - 2 * lapsim_racecar.params.mass_unsprung_front - 2 * lapsim_racecar.params.mass_unsprung_rear + lapsim_racecar.params.driver_mass # kg
+    lapsim_racecar.params.diff_radius = gear_ratio
+    lapsim_racecar.params.max_vel = (lapsim_racecar.params.max_motor_speed/lapsim_racecar.params.diff_radius)*lapsim_racecar.params.rear_tire_radius
+    results_df = pd.DataFrame(columns=["power_limit", "points", "times", "endurance_battery_capacity"])
+    for index, p_l in enumerate(pow_lim):
+        lapsim_racecar.params.power_limit = p_l
         lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
 
         # If a new racing line is needed (i.e. trackwidth changes), enable these lines
         #endurance_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
         #autocross_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
 
-        g_r_results, points, times = engine.Competition(lapsim_racecar, endurance_track, autocross_track,
+        p_l_results, points, times = engine.Competition(lapsim_racecar, endurance_track, autocross_track,
                             skidpad_times, accel_times).run()
-        energy = sum(g_r_results[0]["delta_t"] * g_r_results[0]["power_into_inverter"])
+        energy = sum(p_l_results[0]["delta_t"] * p_l_results[0]["power_into_inverter"])
         print(times)
         print(points)
-        results_df.loc[index] = [g_r, points, times, energy]
-        g_r_results[0].to_csv(f"results/g_r_{str(g_r)}-endurance-concept_2023.csv")
-    results_df.to_csv("results/g_r_sweep-concept_2023.csv")
+        results_df.loc[index] = [p_l, points, times, energy]
+        p_l_results[0].to_csv(f"results/p_l_228_{str(p_l)}-endurance-concept_2023.csv")
+    results_df.to_csv("results/p_l_228_sweep-concept_2023.csv")
 
 
 

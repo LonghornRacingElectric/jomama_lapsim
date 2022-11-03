@@ -80,7 +80,12 @@ class Simulation:
             AY = self.car.lateral(self.car.params.max_vel) # accel capabilities
             df.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
-                df.loc[i,"ax"], df.loc[i,"power_into_inverter"], df.loc[i, "motor_torque"], df.loc[i ,"motor_efficiency"] = accel_func(vel, df.loc[i,"ay"])
+                try:
+                    df.loc[i,"ax"], df.loc[i,"power_into_inverter"], df.loc[i, "motor_torque"], df.loc[i ,"motor_efficiency"] = accel_func(vel, df.loc[i,"ay"])
+                except:
+                    print(i)
+                    print(vel)
+                    raise Exception
                 roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["dist"]])
                 df.loc[i,"delta_t"] = min(roots) if min(roots) > 0 else max(roots)
                 df.loc[i,"delta_vel"] = min(df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
