@@ -18,7 +18,7 @@ def main():
             "velocity" : (3, 30),
             "torque_request": (-1, 1),
             "is_left_diff_bias": (True, False)}
-    mesh_size = 13 # NOTE: MAKE SURE THIS IS ODD
+    mesh_size = 15 # NOTE: MAKE SURE THIS IS ODD
 
 
     ##########################
@@ -131,7 +131,7 @@ def main():
 
 
 # 228 gear ratio sweep for both pack voltages
-    pow_lim = [80000, 77000, 74000, 71000, 68000, 65000, 62000]
+    pow_lim = [80000, 77000, 74000]
     gear_ratio = 3.75
     pack_voltage = 3.6*108 #3.6V*108s
     lapsim_racecar.params.max_motor_speed = (pack_voltage/500) * 5500 * (2 * np.pi / 60)
@@ -155,7 +155,7 @@ def main():
         print(points)
         results_df.loc[index] = [p_l, points, times, energy]
         p_l_results[0].to_csv(f"results/p_l_228_{str(p_l)}-endurance-concept_2023.csv")
-    results_df.to_csv("results/p_l_228_sweep-concept_2023.csv")
+    results_df.to_csv("results/p_l_228_sweep_15mesh_-concept_2023.csv")
 
 
 
