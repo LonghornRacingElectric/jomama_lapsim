@@ -22,11 +22,14 @@ K = 0.06215178719838  # lift-induced drag constant
 Cl0 = 0  # lift at 0 induced drag
 Cd0 = 0.4414249328442602  # parasitic drag coefficien
 refA = 1.2 # reference area, m^2
-Cl = (np.linspace(TEST_MIN, TEST_MAX, divisions))
-Cd_A = refA * (K * (Cl - Cl0) ** 2 + Cd0)
-Cl_A = refA * Cl
 
 CoP_Target = np.linspace(40,60,divisions)
+
+range_of_CLs = (np.linspace(TEST_MIN, TEST_MAX, divisions)) # Used for CdA calculations as well
+ClA_range = range_of_CLs * refA #ClA s that we're sweeping over
+CdA_from_aero_range = refA * (K * (range_of_CLs - Cl0) ** 2) #CdA s that we're sweeping over, corresponds with ClA_range
+
+
 Tries = 2000
 variance = 350
 error = 0.25
@@ -59,13 +62,22 @@ vehicle = engine.Racecar(vehicles.Concept2023(motor_directory="engine/magic_mome
 #logger = Fuck_this_Logger.Logger()
 #aero = Aero.Aerodynamics(vehicles.Concept2023(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"),logger)
 
-Total_Downforce = vehicle.params.CdA_tot * 15 ** 2 * 1.153 / 2
-Total_Drag = vehicle.params.CdA_tot * 15 ** 2 * 1.153 / 2
+
+vehicle.params.CdA_no_aero   = refA * Cd0
+
+# Used for Max downforce and drag calculations
+CdA_total = CdA_from_aero_range + vehicle.params.CdA_no_aero
+ClA_total = ClA_range
+
+
+#Hey Igor what are the magic numbers for. Readability 0/10
+Total_Downforce = ClA_total * 15 ** 2 * 1.153 / 2
+Total_Drag = CdA_total * 15 ** 2 * 1.153 / 2
 Initial_mass = vehicle.params.mass_sprung
 
 if __name__ == '__main__':
     if Cl_Sweep:
-        results_df = pd.DataFrame(columns=["ClA","CdA","endurance_points","autocross_points","skidpad_points","accel_points",
+        results_df = pd.DataFrame(columns=["ClA","CdA (total)","endurance_points","autocross_points","skidpad_points","accel_points",
             "endurance_time","autocross_time","skidpad_time","accel_time", "drag_energy (kWh)", "Mass Delta (kg)",
             "Max Long Accel (g)","Max braking Accel (g)", "Max Lat Accel (g)"])
     else:
@@ -78,17 +90,21 @@ if __name__ == '__main__':
 
         if Cl_Sweep:
             Mass_Delta = 15.770 * 0.45 * (Drag_kWh - 2)
-            vehicle.params.ClA_tot = Cl_A[i]
-            vehicle.params.CdA_tot = Cd_A[i]
+            vehicle.params.ClA_from_aero = ClA_range[i]
+            vehicle.params.CdA_from_aero = CdA_from_aero_range[i]
 
-            if Cl_A[i] == 0:
+            if ClA_range[i] == 0:
                 Initial_mass = vehicle.params.mass_sprung
                 vehicle.params.mass_sprung += Mass_Delta - 16  #Subtracting Mass of Aero Components
 
             else:
                 vehicle.params.mass_sprung = Initial_mass + Mass_Delta
 
-            print("Testing CL_A: " + str(Cl_A[i]) + " and Cd_A: " + str(Cd_A[i]) )
+            print("Testing CL_A: " + str(ClA_range[i]) + \
+                  " and Cd_A due to aero: " + str(CdA_from_aero_range[i]) + \
+                  " and Cd_A not due to aero components: " + str(vehicle.params.CdA_no_aero) + \
+                  " so total Cd_A of: " + str(CdA_total[i]))
+
             vehicle.regenerate_GGV(sweep_range, mesh_size)
             print("GGV Generated!")
             results, points, times = engine.Competition(vehicle, endurance_track, autocross_track,skidpad_times, accel_times).run()
@@ -104,11 +120,11 @@ if __name__ == '__main__':
             df_endurance_breaking = df_endurance[df_endurance['ax'] < 0]
             df_endurance_accel = df_endurance[df_endurance['ax'] >= 0]
 
-            results_df.loc[i] = [Cl_A[i], Cd_A[i], points[0], points[1], points[2], points[3], times[0] * Total_Laps,
+            results_df.loc[i] = [ClA_range[i], CdA_total[i], points[0], points[1], points[2], points[3], times[0] * Total_Laps,
                                 times[1], times[2], times[3], Drag_kWh, vehicle.params.mass_sprung - Initial_mass, df_endurance_accel['ax'].max()/9.81
                                 ,df_endurance_breaking['ax'].min()/9.81, df_endurance['ay'].max()/9.81]
 
-            df_endurance['Drag_J'] = vehicle.params.CdA_tot * df_endurance['vel'] ** 2 * 1.153 / 2 * df_endurance['dist']
+            df_endurance['Drag_J'] = ( (CdA_total[i] * (df_endurance['vel'] ** 2) * 1.153) / 2)  * df_endurance['dist']
             Drag_kWh = (df_endurance["Drag_J"].sum() / (times[0] * 1000) * (times[0] * Total_Laps)/3600)
 
         else:
