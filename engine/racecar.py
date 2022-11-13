@@ -9,7 +9,7 @@ class Racecar:
 
     def regenerate_GGV(self, sweep_range, mesh):
         self.ggv = generate_GGV(self.params, sweep_range, mesh)
-    
+
     def save_ggv(self, file_target):
         self.ggv.to_csv(file_target)
 
@@ -20,7 +20,7 @@ class Racecar:
         # if velocity is exact
         if closest_vels[1] is None:
             return self.__interpolate_long_accel(vel, lateral, is_forward)
-        
+
         # for nearest velocities, find long acceleration for given lateral acceleration
         upper_vel_accel, upper_power, upper_torque, u_e = self.__interpolate_long_accel(closest_vels[1], lateral, is_forward)
         lower_vel_accel, lower_power, lower_torque, l_e = self.__interpolate_long_accel(closest_vels[0], lateral, is_forward)
@@ -62,6 +62,7 @@ class Racecar:
                     dist_2 = ((x_in - x2) ** 2 + (y_in - y2) ** 2)**0.5
                     weight_2 = dist_1/ (dist_1 + dist_2)
                     weight_1 = 1 - weight_2
+
                     power_1 = point["power_into_inverter"] * weight_1
                     power_2 = previous_point["power_into_inverter"] * weight_2
                     power_into_inverter.append(power_1 + power_2)
@@ -78,35 +79,26 @@ class Racecar:
                 if len(intersections) > 1:
                     break
                 previous_point = point
+
         # step 2: interpolate from intersection points, calculated long accel given lateral accel
+        if len(intersections) == 0:
+            index = velocity_slice_hull["vehicle_accelerations_NTB_1"].idxmax()
+            accel = velocity_slice_hull.loc[index]["vehicle_accelerations_NTB_0"]
+            power = velocity_slice_hull.loc[index]["power_into_inverter"]
+            torque = velocity_slice_hull.loc[index]["motor_torque"]
+            eff = velocity_slice_hull.loc[index]["motor_efficiency"]
+            return accel, power, torque, eff
         if is_forward:
-            if len(intersections) == 0:
-                index = velocity_slice_hull["vehicle_accelerations_NTB_1"].idxmax()
-                accel = velocity_slice_hull.loc[index]["vehicle_accelerations_NTB_0"]
-                power = velocity_slice_hull.loc[index]["power_into_inverter"]
-                torque = velocity_slice_hull.loc[index]["motor_torque"]
-                eff = velocity_slice_hull.loc[index]["motor_efficiency"]
-                return accel, power, torque, eff
             index = intersections.index(max(intersections))
             accel = max(intersections)
-            power = power_into_inverter[index]
-            torque = torque_in[index]
-            eff = e_in[index]
-            return accel, power, torque, eff
         else:
-            if len(intersections) == 0:
-                index = velocity_slice_hull["vehicle_accelerations_NTB_1"].idxmin()
-                accel = velocity_slice_hull.loc[index]["vehicle_accelerations_NTB_0"]
-                power = velocity_slice_hull.loc[index]["power_into_inverter"]
-                torque = velocity_slice_hull.loc[index]["motor_torque"]
-                eff = velocity_slice_hull.loc[index]["motor_efficiency"]
-                return accel, power, torque, eff
             index = intersections.index(min(intersections))
             accel = min(intersections)
-            power = power_into_inverter[index]
-            torque = torque_in[index]
-            eff = e_in[index]
-            return accel, power, torque, eff
+        power = power_into_inverter[index]
+        torque = torque_in[index]
+        eff = e_in[index]
+        return accel, power, torque, eff
+
 
     def __get_nearest_velocities(self, vel):
         exactmatch = self.ggv[self.ggv["s_dot"] == vel]
