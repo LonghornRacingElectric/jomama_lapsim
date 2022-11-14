@@ -22,17 +22,20 @@ class Racecar:
             return self.__interpolate_long_accel(vel, lateral, is_forward)
 
         # for nearest velocities, find long acceleration for given lateral acceleration
-        upper_vel_accel, upper_power, upper_torque, u_e = self.__interpolate_long_accel(closest_vels[1], lateral, is_forward)
-        lower_vel_accel, lower_power, lower_torque, l_e = self.__interpolate_long_accel(closest_vels[0], lateral, is_forward)
+        upper_vel_accel, upper_power, upper_torque, u_e, upper_dr, upper_sf, upper_df = self.__interpolate_long_accel(closest_vels[1], lateral, is_forward)
+        lower_vel_accel, lower_power, lower_torque, l_e, lower_dr, lower_sf, lower_df = self.__interpolate_long_accel(closest_vels[0], lateral, is_forward)
 
         # do weighted averaging of long accel by closeness to velocity
         weight = abs(vel - closest_vels[0])/(abs(vel - closest_vels[0]) + abs(vel - closest_vels[1]))
         long_accel_interpolated = lower_vel_accel * (1 - weight) + upper_vel_accel * weight
-        power_interpolated = lower_power * (1 - weight) + upper_power * weight
-        torque_interpolated = lower_torque * (1 - weight) + upper_torque * weight
-        efficiency_interpolated = l_e * (1 - weight) + u_e * weight
+        power_interpolated      =     lower_power * (1 - weight) +     upper_power * weight
+        torque_interpolated     =    lower_torque * (1 - weight) +    upper_torque * weight
+        efficiency_interpolated =             l_e * (1 - weight) +             u_e * weight
+        drag_interpolated       =        lower_dr * (1 - weight) +        upper_dr * weight
+        sf_interpolated         =        lower_sf * (1 - weight) +        upper_sf * weight
+        df_interpolated         =        lower_df * (1 - weight) +        upper_df * weight
 
-        return long_accel_interpolated, power_interpolated, torque_interpolated, efficiency_interpolated
+        return long_accel_interpolated, power_interpolated, torque_interpolated, efficiency_interpolated, drag_interpolated, sf_interpolated, df_interpolated
 
     def __interpolate_long_accel(self, vel, lateral_accel, is_forward):
         # step 1: find all intersection segments
@@ -42,6 +45,10 @@ class Racecar:
         power_into_inverter = []
         torque_in = []
         e_in = []
+        drag = []
+        downforce = []
+        sideforce = []
+
         if not exactmatch.empty:
             return exactmatch["vehicle_accelerations_NTB_0"], exactmatch["power_into_inverter"], exactmatch["motor_torque"], exactmatch["motor_efficiency"]
         else:
@@ -63,20 +70,15 @@ class Racecar:
                     weight_2 = dist_1/ (dist_1 + dist_2)
                     weight_1 = 1 - weight_2
 
-                    power_1 = point["power_into_inverter"] * weight_1
-                    power_2 = previous_point["power_into_inverter"] * weight_2
-                    power_into_inverter.append(power_1 + power_2)
-
-                    torque_1 = point["motor_torque"] * weight_1
-                    torque_2 = previous_point["motor_torque"] * weight_2
-                    torque_in.append(torque_1 + torque_2)
-
-                    e_1 = point["motor_efficiency"] * weight_1
-                    e_2 = previous_point["motor_efficiency"] * weight_2
-                    e_in.append(e_1 + e_2)
+                    power_into_inverter.append(point["power_into_inverter"] * weight_1 + previous_point["power_into_inverter"] * weight_2)
+                    torque_in.append(point["motor_torque"] * weight_1 + previous_point["motor_torque"] * weight_2)
+                    e_in.append(point["motor_efficiency"] * weight_1 + previous_point["motor_efficiency"] * weight_2)
+                    drag.append(point["aero_forces_0"] * weight_1 + previous_point["aero_forces_0"] * weight_2)
+                    sideforce.append(point["aero_forces_1"] * weight_1 + previous_point["aero_forces_1"] * weight_2)
+                    downforce.append(point["aero_forces_2"] * weight_1 + previous_point["aero_forces_2"] * weight_2)
 
                     intersections.append(x_in)
-                if len(intersections) > 1:
+                if len(intersections) >= 2:
                     break
                 previous_point = point
 
@@ -87,17 +89,22 @@ class Racecar:
             power = velocity_slice_hull.loc[index]["power_into_inverter"]
             torque = velocity_slice_hull.loc[index]["motor_torque"]
             eff = velocity_slice_hull.loc[index]["motor_efficiency"]
-            return accel, power, torque, eff
-        if is_forward:
-            index = intersections.index(max(intersections))
-            accel = max(intersections)
+            dr = velocity_slice_hull.loc[index]["aero_forces_0"]
+            sf = velocity_slice_hull.loc[index]["aero_forces_1"]
+            df = velocity_slice_hull.loc[index]["aero_forces_2"]
+
         else:
-            index = intersections.index(min(intersections))
-            accel = min(intersections)
-        power = power_into_inverter[index]
-        torque = torque_in[index]
-        eff = e_in[index]
-        return accel, power, torque, eff
+
+            accel = max(intersections) if is_forward else min(intersections)
+            index = intersections.index(accel)
+            power = power_into_inverter[index]
+            torque = torque_in[index]
+            eff = e_in[index]
+            dr = drag[index]
+            sf = sideforce[index]
+            df = downforce[index]
+
+        return accel, power, torque, eff, dr, sf, df
 
 
     def __get_nearest_velocities(self, vel):
