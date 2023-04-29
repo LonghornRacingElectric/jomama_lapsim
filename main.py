@@ -10,7 +10,7 @@ def main():
     endurance_track = engine.Track("racing_lines/en_mi_2019.csv", 1247.74, track_type="endurance")
     autocross_track = engine.Track("racing_lines/ax_mi_2019.csv", 50.008)
     skidpad_times = 5.0497
-    accel_times = 4.004
+    accel_times = 3.7
 
     # NOTE: guesstimation based from TTC on maximum tire saturation slip angle
     sweep_range = {"body_slip": (-10 * np.pi / 180, 10 * np.pi / 180),
@@ -48,14 +48,17 @@ def main():
     ####################################
     ### Example: One-off simulations ###
 
-    #lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
-    lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
-    lapsim_racecar.save_ggv("results/GGV.csv")
+    lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
+    #lapsim_racecar.recreate_initial_guesses(sweep_range, mesh_size)
+    #lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
+    #lapsim_racecar.save_ggv("results/GGV.csv")
     #endurance_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
     #autocross_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
     comp = engine.Competition(lapsim_racecar, endurance_track, autocross_track,
                            skidpad_times, accel_times)
     results, points, times = comp.run()
+    energy = sum(results[0]["delta_t"] * results[0]["power_into_inverter"])
+    print(energy * 2.77778e-7)
     results[0].to_csv("results/endurance_michigan_2019-concept_2023.csv")
     results[1].to_csv("results/autocross_michigan_2019-concept_2023.csv")
     results[3].to_csv("results/acceleration-concept_2023.csv")
