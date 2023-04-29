@@ -48,10 +48,10 @@ def main():
     ####################################
     ### Example: One-off simulations ###
 
-    #lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
+    lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
     #lapsim_racecar.recreate_initial_guesses(sweep_range, mesh_size)
-    lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
-    lapsim_racecar.save_ggv("results/GGV.csv")
+    #lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
+    #lapsim_racecar.save_ggv("results/GGV.csv")
     #endurance_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
     #autocross_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
     comp = engine.Competition(lapsim_racecar, endurance_track, autocross_track,

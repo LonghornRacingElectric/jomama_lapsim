@@ -114,8 +114,8 @@ class Racing_Line:
         df.to_csv(path_or_buf=("../racing_lines/%s.csv" % self.name), index=False)
 
 
-r = Racing_Line("Autocross_Michigan_2019_Sanitized.xlsx", "ax", "ax_mi_2019")
-# r = Racing_Line("Endurance_Michigan_2019_Sanitized.xlsx", "en", "en_mi_2019")
+r = Racing_Line("Autocross_Michigan_2019.csv", "ax", "ax_mi_2019")
+# r = Racing_Line("Endurance_Michigan_2019.csv", "en", "en_mi_2019")
 
 ts = np.arange(1, len(r.center_pts.index), 0.01)
 disc_x = r.spline_x(ts)
