@@ -5,6 +5,7 @@ from scipy.optimize import fsolve
 class Racecar:
     def __init__(self, racecar, existing_ggv_file = None):
         self.ggv = pd.read_csv(existing_ggv_file) if existing_ggv_file else None
+        self.ggv_prepared = False
         self.params = racecar
         try:
             self.initial_guesses = pd.read_csv("results/GGV_initial_guesses.csv")
@@ -21,11 +22,15 @@ class Racecar:
         
     def regenerate_GGV(self, sweep_range, mesh):
         self.ggv = generate_GGV(self.params, sweep_range, mesh, initial_guesses = self.initial_guesses)
+        self.ggv_prepared = False
     
     def save_ggv(self, file_target):
         self.ggv.to_csv(file_target)
 
     def prepare_GGV(self):
+        if self.ggv_prepared: return
+        self.ggv_prepared = True
+
         self.fast_ggv = {}
         for vel in self.ggv["s_dot"].unique():
             self.fast_ggv[vel] = self.ggv[self.ggv["s_dot"] == vel]
