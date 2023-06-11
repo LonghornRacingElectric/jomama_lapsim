@@ -25,6 +25,11 @@ class Racecar:
     def save_ggv(self, file_target):
         self.ggv.to_csv(file_target)
 
+    def prepare_GGV(self):
+        self.fast_ggv = {}
+        for vel in self.ggv["s_dot"].unique():
+            self.fast_ggv[vel] = self.ggv[self.ggv["s_dot"] == vel]
+
     def max_vel(self):
         return self.params.max_motor_speed * self.params.rear_tire_radius / self.params.diff_radius * self.params.motor_radius
 
@@ -51,7 +56,7 @@ class Racecar:
 
     def __interpolate_long_accel(self, vel, lateral_accel, is_forward):
         # step 1: find all intersection segments
-        velocity_slice_hull = self.ggv[self.ggv["s_dot"] == vel]
+        velocity_slice_hull = self.fast_ggv[vel]
         exactmatch = velocity_slice_hull[velocity_slice_hull["vehicle_accelerations_NTB_1"] == lateral_accel]
         intersections = []
         power_into_inverter = []
@@ -129,13 +134,12 @@ class Racecar:
             return accel, power, torque, eff
 
     def __get_nearest_velocities(self, vel):
-        exactmatch = self.ggv[self.ggv["s_dot"] == vel]
-        if not exactmatch.empty:
+        if vel in self.fast_ggv:
             return [vel, None]
         else:
             lower_than = []
             greater_than = []
-            for swept_vel in self.ggv["s_dot"].unique():
+            for swept_vel in self.fast_ggv.keys():
                 if vel < swept_vel:
                     greater_than.append(swept_vel)
                 else:
@@ -154,9 +158,9 @@ class Racecar:
         # Find closest velocities
         closest_vels = self.__get_nearest_velocities(vel)
         if closest_vels[1] is None:
-            return self.ggv[self.ggv["s_dot"] == vel]["vehicle_accelerations_NTB_1"].max()
+            return self.fast_ggv[vel]["vehicle_accelerations_NTB_1"].max()
         # get max lateral acceleration for those velocities
-        max_lateral_accels = [self.ggv[self.ggv["s_dot"] == swept_vel]["vehicle_accelerations_NTB_1"].max() for swept_vel in closest_vels]
+        max_lateral_accels = [self.fast_ggv[swept_vel]["vehicle_accelerations_NTB_1"].max() for swept_vel in closest_vels]
         # weight max lateral accel based on closeness of velocity
         weight = abs(vel - closest_vels[0])/(abs(vel - closest_vels[0]) + abs(vel - closest_vels[1]))
         lateral_accel_interpolated = max_lateral_accels[0] * (1 - weight) + max_lateral_accels[1] * weight

@@ -13,6 +13,8 @@ class Simulation:
         self.forward_sim_results = None
 
     def run(self):
+        self.car.prepare_GGV()
+
         if self.is_skidpad:
             return None, self.__skidpad_sim()
 
