@@ -16,7 +16,7 @@ class Simulation:
         self.car.prepare_GGV()
 
         if self.is_skidpad:
-            return None, self.__skidpad_sim()
+            return pd.DataFrame(), self.__skidpad_sim()
 
         # get turn radii from raceline points
         track_points = curvature(self.track.path_points())
