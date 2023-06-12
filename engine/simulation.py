@@ -104,12 +104,12 @@ class Simulation:
 
     def __forward_sim(self, track, starting_vel, is_reverse):
         accel_func = self.car.accel_backward if is_reverse else self.car.accel_forward
+        AY = self.car.lateral(self.car.max_vel()) # accel capabilities
         vel = starting_vel
 
         for i, row in (track[::-1] if is_reverse else track).iterrows():
             vmax = self.car.max_vel_corner(row["R"])
             track.loc[i ,"max_vel"] = vmax
-            AY = self.car.lateral(self.car.max_vel()) # accel capabilities
             track.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
                 track.loc[i,"ax"], track.loc[i,"power_into_inverter"], track.loc[i, "motor_torque"], track.loc[i ,"motor_efficiency"] = accel_func(vel, track.loc[i,"ay"])
