@@ -1,5 +1,6 @@
 from engine.magic_moment_method.solver_sweeper import generate_GGV
 import pandas as pd
+import numpy as np
 from scipy.optimize import fsolve
 
 class Racecar:
@@ -33,7 +34,34 @@ class Racecar:
 
         self.fast_ggv = {}
         for vel in self.ggv["s_dot"].unique():
-            self.fast_ggv[vel] = self.ggv[self.ggv["s_dot"] == vel]
+            # prepare half-slices
+            vel_slice = self.ggv[self.ggv["s_dot"] == vel]
+            vel_slice_accel = vel_slice[vel_slice["vehicle_accelerations_NTB_0"] > 0].sort_values(by=["vehicle_accelerations_NTB_1"]).reset_index(drop=True)
+            vel_slice_decel = vel_slice[vel_slice["vehicle_accelerations_NTB_0"] <= 0].sort_values(by=["vehicle_accelerations_NTB_1"]).reset_index(drop=True)
+
+            # overlap half-slices for edge interpolation
+            if vel_slice_accel.iloc[0]["vehicle_accelerations_NTB_1"] < vel_slice_decel.iloc[0]["vehicle_accelerations_NTB_1"]:
+                vel_slice_decel.loc[-1] = vel_slice_accel.iloc[0].copy()
+                vel_slice_decel.index += 1
+                vel_slice_decel.sort_index(inplace=True) 
+            else:
+                vel_slice_accel.loc[-1] = vel_slice_decel.iloc[0].copy()
+                vel_slice_accel.index += 1
+                vel_slice_accel.sort_index(inplace=True) 
+            if vel_slice_accel.iloc[-1]["vehicle_accelerations_NTB_1"] > vel_slice_decel.iloc[-1]["vehicle_accelerations_NTB_1"]:
+                vel_slice_decel.loc[len(vel_slice_decel)] = vel_slice_accel.iloc[-1].copy()
+            else:
+                vel_slice_accel.loc[len(vel_slice_accel)] = vel_slice_decel.iloc[-1].copy()
+            
+            vel_slice_accel = vel_slice_accel.reset_index(drop=True)
+            vel_slice_decel = vel_slice_decel.reset_index(drop=True)
+            
+            # store half-slices and max in dictionary
+            self.fast_ggv[vel] = {
+                True: vel_slice_accel,
+                False: vel_slice_decel,
+                "max": vel_slice["vehicle_accelerations_NTB_1"].max()
+            }
 
     def max_vel(self):
         return self.params.max_motor_speed * self.params.rear_tire_radius / self.params.diff_radius * self.params.motor_radius
@@ -60,83 +88,108 @@ class Racecar:
         return long_accel_interpolated, power_interpolated, torque_interpolated, efficiency_interpolated
 
     def __interpolate_long_accel(self, vel, lateral_accel, is_forward):
-        # step 1: find all intersection segments
-        velocity_slice_hull = self.fast_ggv[vel]
-        exactmatch = velocity_slice_hull[velocity_slice_hull["vehicle_accelerations_NTB_1"] == lateral_accel]
-        intersections = []
-        power_into_inverter = []
-        torque_in = []
-        e_in = []
-        if not exactmatch.empty:
-            return exactmatch["vehicle_accelerations_NTB_0"], exactmatch["power_into_inverter"], exactmatch["motor_torque"], exactmatch["motor_efficiency"]
-        else:
-            previous_point = velocity_slice_hull.iloc[-1]
-            for _, point in velocity_slice_hull.iterrows():
-                # check for intersection
-                if ((previous_point["vehicle_accelerations_NTB_1"] > lateral_accel and point["vehicle_accelerations_NTB_1"] < lateral_accel) or
-                    (previous_point["vehicle_accelerations_NTB_1"] < lateral_accel and point["vehicle_accelerations_NTB_1"] > lateral_accel)):
-                    y2, y1 = previous_point["vehicle_accelerations_NTB_1"], point["vehicle_accelerations_NTB_1"]
-                    x2, x1 = previous_point["vehicle_accelerations_NTB_0"], point["vehicle_accelerations_NTB_0"]
-                    if x1 != x2:
-                        m = (y2-y1)/(x2-x1)
-                        b = y1 - m * x1
-                        y_in = lateral_accel
-                        # y = mx + b
-                        x_in = (y_in - b)/m
+        def decompose(point):
+            return point["vehicle_accelerations_NTB_0"], point["power_into_inverter"], point["motor_torque"], point["motor_efficiency"]
 
-                        dist_1 = ((x_in - x1) ** 2 + (y_in - y1) ** 2)**0.5
-                        dist_2 = ((x_in - x2) ** 2 + (y_in - y2) ** 2)**0.5
-                    else:
-                        x_in = x1
-                        dist_1, dist_2 = 0.5, 0.5
+        ggv_half_slice: pd.DataFrame = self.fast_ggv[vel][is_forward]
 
-                    weight_2 = dist_1/ (dist_1 + dist_2)
-                    weight_1 = 1 - weight_2
-                    power_1 = point["power_into_inverter"] * weight_1
-                    power_2 = previous_point["power_into_inverter"] * weight_2
-                    power_into_inverter.append(power_1 + power_2)
+        lat_accels: pd.Series[float] = ggv_half_slice["vehicle_accelerations_NTB_1"]
+        i_upper = lat_accels.searchsorted(lateral_accel)
+        
+        # check if out of bounds
+        if i_upper == 0 or i_upper == len(lat_accels):
+            i = min(i_upper, len(lat_accels) - 1)
+            return decompose(ggv_half_slice.iloc[i])
 
-                    torque_1 = point["motor_torque"] * weight_1
-                    torque_2 = previous_point["motor_torque"] * weight_2
-                    torque_in.append(torque_1 + torque_2)
+        # check for exact match
+        if lat_accels.iloc[i_upper] == lateral_accel:
+            return decompose(ggv_half_slice.iloc[i_upper])
+        
+        # interpolate between two nearest points
+        i_lower = i_upper - 1
+        point_lower = ggv_half_slice.iloc[i_lower]
+        point_upper = ggv_half_slice.iloc[i_upper]
+        lat_lower = point_lower["vehicle_accelerations_NTB_1"]
+        lat_upper = point_upper["vehicle_accelerations_NTB_1"]
+        weight = (lateral_accel - lat_lower) / (lat_upper - lat_lower)
+        point_inter = (point_lower * (1-weight)) + (point_upper * weight)
+        return decompose(point_inter)
+                
 
-                    e_1 = point["motor_efficiency"] * weight_1
-                    e_2 = previous_point["motor_efficiency"] * weight_2
-                    e_in.append(e_1 + e_2)
+        # return order: "vehicle_accelerations_NTB_0", "power_into_inverter", "motor_torque", "motor_efficiency"
+    
+        # exactmatch = ggv_half_slice[ggv_half_slice["vehicle_accelerations_NTB_1"] == lateral_accel]
+        # if not exactmatch.empty:
+        #     return exactmatch["vehicle_accelerations_NTB_0"], exactmatch["power_into_inverter"], exactmatch["motor_torque"], exactmatch["motor_efficiency"]
 
-                    intersections.append(x_in)
-                if len(intersections) > 1:
-                    break
-                previous_point = point
-        # step 2: interpolate from intersection points, calculated long accel given lateral accel
-        if is_forward:
-            if len(intersections) == 0:
-                index = velocity_slice_hull["vehicle_accelerations_NTB_1"].idxmax()
-                accel = velocity_slice_hull.loc[index]["vehicle_accelerations_NTB_0"]
-                power = velocity_slice_hull.loc[index]["power_into_inverter"]
-                torque = velocity_slice_hull.loc[index]["motor_torque"]
-                eff = velocity_slice_hull.loc[index]["motor_efficiency"]
-                return accel, power, torque, eff
-            index = intersections.index(max(intersections))
-            accel = max(intersections)
-            power = power_into_inverter[index]
-            torque = torque_in[index]
-            eff = e_in[index]
-            return accel, power, torque, eff
-        else:
-            if len(intersections) == 0:
-                index = velocity_slice_hull["vehicle_accelerations_NTB_1"].idxmin()
-                accel = velocity_slice_hull.loc[index]["vehicle_accelerations_NTB_0"]
-                power = velocity_slice_hull.loc[index]["power_into_inverter"]
-                torque = velocity_slice_hull.loc[index]["motor_torque"]
-                eff = velocity_slice_hull.loc[index]["motor_efficiency"]
-                return accel, power, torque, eff
-            index = intersections.index(min(intersections))
-            accel = min(intersections)
-            power = power_into_inverter[index]
-            torque = torque_in[index]
-            eff = e_in[index]
-            return accel, power, torque, eff
+        # previous_point = velocity_slice_hull.iloc[-1]
+        # for _, point in velocity_slice_hull.iterrows():
+        #     # check for intersection
+        #     if ((previous_point["vehicle_accelerations_NTB_1"] > lateral_accel and point["vehicle_accelerations_NTB_1"] < lateral_accel) or
+        #         (previous_point["vehicle_accelerations_NTB_1"] < lateral_accel and point["vehicle_accelerations_NTB_1"] > lateral_accel)):
+        #         y2, y1 = previous_point["vehicle_accelerations_NTB_1"], point["vehicle_accelerations_NTB_1"]
+        #         x2, x1 = previous_point["vehicle_accelerations_NTB_0"], point["vehicle_accelerations_NTB_0"]
+        #         if x1 != x2:
+        #             m = (y2-y1)/(x2-x1)
+        #             b = y1 - m * x1
+        #             y_in = lateral_accel
+        #             # y = mx + b
+        #             x_in = (y_in - b)/m
+
+        #             dist_1 = ((x_in - x1) ** 2 + (y_in - y1) ** 2)**0.5
+        #             dist_2 = ((x_in - x2) ** 2 + (y_in - y2) ** 2)**0.5
+        #         else:
+        #             x_in = x1
+        #             dist_1, dist_2 = 0.5, 0.5
+
+        #         weight_2 = dist_1/ (dist_1 + dist_2)
+        #         weight_1 = 1 - weight_2
+        #         power_1 = point["power_into_inverter"] * weight_1
+        #         power_2 = previous_point["power_into_inverter"] * weight_2
+        #         power_into_inverter.append(power_1 + power_2)
+
+        #         torque_1 = point["motor_torque"] * weight_1
+        #         torque_2 = previous_point["motor_torque"] * weight_2
+        #         torque_in.append(torque_1 + torque_2)
+
+        #         e_1 = point["motor_efficiency"] * weight_1
+        #         e_2 = previous_point["motor_efficiency"] * weight_2
+        #         e_in.append(e_1 + e_2)
+
+        #         intersections.append(x_in)
+        #     if len(intersections) > 1:
+        #         break
+        #     previous_point = point
+
+        # # step 2: interpolate from intersection points, calculated long accel given lateral accel
+        # if is_forward:
+        #     if len(intersections) == 0:
+        #         index = velocity_slice_hull["vehicle_accelerations_NTB_1"].idxmax()
+        #         accel = velocity_slice_hull.loc[index]["vehicle_accelerations_NTB_0"]
+        #         power = velocity_slice_hull.loc[index]["power_into_inverter"]
+        #         torque = velocity_slice_hull.loc[index]["motor_torque"]
+        #         eff = velocity_slice_hull.loc[index]["motor_efficiency"]
+        #         return accel, power, torque, eff
+        #     index = intersections.index(max(intersections))
+        #     accel = max(intersections)
+        #     power = power_into_inverter[index]
+        #     torque = torque_in[index]
+        #     eff = e_in[index]
+        #     return accel, power, torque, eff
+        # else:
+        #     if len(intersections) == 0:
+        #         index = velocity_slice_hull["vehicle_accelerations_NTB_1"].idxmin()
+        #         accel = velocity_slice_hull.loc[index]["vehicle_accelerations_NTB_0"]
+        #         power = velocity_slice_hull.loc[index]["power_into_inverter"]
+        #         torque = velocity_slice_hull.loc[index]["motor_torque"]
+        #         eff = velocity_slice_hull.loc[index]["motor_efficiency"]
+        #         return accel, power, torque, eff
+        #     index = intersections.index(min(intersections))
+        #     accel = min(intersections)
+        #     power = power_into_inverter[index]
+        #     torque = torque_in[index]
+        #     eff = e_in[index]
+        #     return accel, power, torque, eff
 
     def __get_nearest_velocities(self, vel):
         if vel in self.fast_ggv:
@@ -163,9 +216,9 @@ class Racecar:
         # Find closest velocities
         closest_vels = self.__get_nearest_velocities(vel)
         if closest_vels[1] is None:
-            return self.fast_ggv[vel]["vehicle_accelerations_NTB_1"].max()
+            return self.fast_ggv[vel]["max"]
         # get max lateral acceleration for those velocities
-        max_lateral_accels = [self.fast_ggv[swept_vel]["vehicle_accelerations_NTB_1"].max() for swept_vel in closest_vels]
+        max_lateral_accels = [self.fast_ggv[swept_vel]["max"] for swept_vel in closest_vels]
         # weight max lateral accel based on closeness of velocity
         weight = abs(vel - closest_vels[0])/(abs(vel - closest_vels[0]) + abs(vel - closest_vels[1]))
         lateral_accel_interpolated = max_lateral_accels[0] * (1 - weight) + max_lateral_accels[1] * weight
