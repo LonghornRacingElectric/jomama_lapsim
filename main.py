@@ -53,6 +53,7 @@ def main():
     print()
 
     lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
+    lapsim_racecar.prepare_GGV()
     #lapsim_racecar.recreate_initial_guesses(sweep_range, mesh_size)
     #lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
     #lapsim_racecar.save_ggv("results/GGV.csv")
