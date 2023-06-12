@@ -3,7 +3,7 @@ import pandas as pd
 import time as timelib
 import math
 
-ENABLE_PROFILING = False # use this to measure times
+ENABLE_PROFILING = True # use this to measure times
 
 class Simulation:
     def __init__(self, title, car, track, is_skidpad = False):

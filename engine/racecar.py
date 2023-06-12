@@ -2,6 +2,7 @@ from engine.magic_moment_method.solver_sweeper import generate_GGV
 import pandas as pd
 from scipy.optimize import fsolve
 import numpy as np
+from functools import lru_cache
 
 class Racecar:
     def __init__(self, racecar, existing_ggv_file = None):
@@ -66,6 +67,7 @@ class Racecar:
             self.optimal_cornering["vel"].append(vel)
             self.optimal_cornering["accel"].append(vel_slice["vehicle_accelerations_NTB_1"].max())
 
+    @lru_cache(maxsize=1)
     def max_vel(self):
         return self.params.max_motor_speed * self.params.rear_tire_radius / self.params.diff_radius * self.params.motor_radius
 
@@ -154,11 +156,17 @@ class Racecar:
             # TODO: FIX THIS BULLSHIT
             if radius < 7:
                 radius = 7
-            def vel_solver(x):
-                velocity = x[0]
-                return velocity**2/radius-self.lateral(velocity)
-            vel_corner = fsolve(vel_solver, [radius])[0]
+            
+            vel_min, vel_max = 0, self.max_vel()
+            for i in range(16):
+                vel = (vel_min + vel_max) / 2.0
+                residual = (vel * vel / radius) - self.lateral(vel)
+                if residual < 0:
+                    vel_min = vel
+                else:
+                    vel_max = vel
+            vel_corner = (vel_min + vel_max) / 2.0
         except:
             print(radius)
             raise Exception
-        return vel_corner if vel_corner < self.max_vel() else self.max_vel()
+        return min(vel_corner, self.max_vel())
