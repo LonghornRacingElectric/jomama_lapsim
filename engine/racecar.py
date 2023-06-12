@@ -1,6 +1,7 @@
 from engine.magic_moment_method.solver_sweeper import generate_GGV
 import pandas as pd
 from scipy.optimize import fsolve
+import numpy as np
 
 class Racecar:
     def __init__(self, racecar, existing_ggv_file = None):
@@ -32,6 +33,7 @@ class Racecar:
 
     def prepare_GGV(self):
         self.fast_ggv = {}
+        self.optimal_cornering = {"vel": [], "accel": []}
         for vel in self.ggv["s_dot"].unique():
             # prepare half-slices
             vel_slice = self.ggv[self.ggv["s_dot"] == vel]
@@ -58,9 +60,11 @@ class Racecar:
             # store half-slices and max in dictionary
             self.fast_ggv[vel] = {
                 True: vel_slice_accel,
-                False: vel_slice_decel,
-                "max": vel_slice["vehicle_accelerations_NTB_1"].max()
+                False: vel_slice_decel
             }
+
+            self.optimal_cornering["vel"].append(vel)
+            self.optimal_cornering["accel"].append(vel_slice["vehicle_accelerations_NTB_1"].max())
 
     def max_vel(self):
         return self.params.max_motor_speed * self.params.rear_tire_radius / self.params.diff_radius * self.params.motor_radius
@@ -139,16 +143,9 @@ class Racecar:
     def lateral(self, vel):
         if vel < 0:
             return 0
-        # Find closest velocities
-        closest_vels = self.__get_nearest_velocities(vel)
-        if closest_vels[1] is None:
-            return self.fast_ggv[vel]["max"]
-        # get max lateral acceleration for those velocities
-        max_lateral_accels = [self.fast_ggv[swept_vel]["max"] for swept_vel in closest_vels]
-        # weight max lateral accel based on closeness of velocity
-        weight = abs(vel - closest_vels[0])/(abs(vel - closest_vels[0]) + abs(vel - closest_vels[1]))
-        lateral_accel_interpolated = max_lateral_accels[0] * (1 - weight) + max_lateral_accels[1] * weight
-        return lateral_accel_interpolated
+        
+        lat_accel_interpolated = np.interp(vel, self.optimal_cornering["vel"], self.optimal_cornering["accel"])
+        return lat_accel_interpolated
 
     def max_vel_corner(self, radius):
         try:
