@@ -1,39 +1,62 @@
 import numpy as np
 import pandas as pd
+import time as timelib
+import math
+
+ENABLE_PROFILING = False # use this to measure times
 
 class Simulation:
-    def __init__(self, car, track, is_skidpad = False):
+    def __init__(self, title, car, track, is_skidpad = False):
+        self.title = title
         self.track = track
         self.car = car
         self.is_skidpad = is_skidpad
+        self.logLines = []
 
         self.time = 0
         self.results = None
         self.reverse_sim_results = None
         self.forward_sim_results = None
+    
+    def log(self, *args):
+        self.logLines.append(" ".join(map(str, args)))
+    
+    def begin_profiling(self):
+        self.start_time = timelib.time()
+        self.log("")
+        self.log("===", self.title, "Sim", "===")
+    
+    def profiling_checkpoint(self, name):
+        end_time = timelib.time()
+        elapsed_time = end_time - self.start_time
+        self.log(name.ljust(24), round(elapsed_time, 3), "s")
+        self.start_time = end_time
+    
+    def finish_profiling(self):
+        if ENABLE_PROFILING:
+            print("\n".join(self.logLines))
 
     def run(self):
-        self.car.prepare_GGV()
+        self.begin_profiling()
 
         if self.is_skidpad:
             return pd.DataFrame(), self.__skidpad_sim()
 
         # get turn radii from raceline points
-        track_points = curvature(self.track.path_points())
+        track_points = curvature(self.track.path_points()).astype('float64')
+        self.profiling_checkpoint("curvature")
 
         # find dist traveled for each point on track
-        track_points["dist"], track_points["pos"], length_traveled = 0, 0, 0
-        previous_row = track_points.iloc[1]
-        for i, row in track_points.iloc[1:].iterrows():
-            dist = ((row["x"] - previous_row["x"])**2 + (row["y"] - previous_row["y"])**2)**0.5
-            track_points.loc[i,"dist"] = dist
-            previous_row, length_traveled = row, length_traveled + dist
-            track_points.loc[i,"pos"] = length_traveled
-
-        # TODO: temp fix - make it work without this
-        track_points = track_points.drop(track_points.shape[0]-1)
-        track_points = track_points.drop(0)
-        track_points = track_points.drop(1)
+        track_points["dist"], track_points["pos"], length_traveled = 0.0, 0.0, 0.0
+        p0 = track_points.loc[0, "x"], track_points.loc[0, "y"]
+        for i in range(1, len(track_points)):
+            p1 = track_points.loc[i, "x"], track_points.loc[i, "y"]
+            dist = math.dist(p0, p1)
+            length_traveled += dist
+            track_points.loc[i, "dist"] = dist
+            track_points.loc[i, "pos"] = length_traveled
+            p0 = p1
+        self.profiling_checkpoint("distances")
 
         for x in ["delta_t", "delta_vel", "vel", "ay", "ax", "power_into_inverter", "motor_torque", "motor_efficiency"]:
             track_points[x] = 0
@@ -45,8 +68,13 @@ class Simulation:
         else:
             starting_velocity = 0
             ending_velocity = initial_forward_sim_df["vel"].iloc[initial_forward_sim_df.shape[1]]
+        self.profiling_checkpoint("initial forward sim")
+
         self.reverse_sim_results = self.__forward_sim(track_points.copy(deep = True), ending_velocity, True)
+        self.profiling_checkpoint("reverse sim")
+
         self.forward_sim_results = self.__forward_sim(track_points.copy(deep = True), starting_velocity, False)
+        self.profiling_checkpoint("forward sim")
     
         ### COMBINE RESULTS
         time, rows = 0, []
@@ -62,6 +90,10 @@ class Simulation:
         
         self.results = pd.DataFrame(rows, columns=[*self.reverse_sim_results.columns, "time"])
         self.time = self.results["time"].max()
+        self.profiling_checkpoint("combine sims")
+
+        self.finish_profiling()
+
         return self.results, self.time
     
     def __skidpad_sim(self):
@@ -70,50 +102,55 @@ class Simulation:
         time = path_radius * 2 * np.pi / speed
         return time
 
-    def __forward_sim(self, df, starting_vel, is_reverse):
-        accel_func = self.car.deccel if is_reverse else self.car.accel
+    def __forward_sim(self, track, starting_vel, is_reverse):
+        accel_func = self.car.accel_backward if is_reverse else self.car.accel_forward
         vel = starting_vel
 
-        for i, row in (df[::-1] if is_reverse else df).iterrows():
+        for i, row in (track[::-1] if is_reverse else track).iterrows():
             vmax = self.car.max_vel_corner(row["R"])
-            df.loc[i ,"max_vel"] = vmax
+            track.loc[i ,"max_vel"] = vmax
             AY = self.car.lateral(self.car.max_vel()) # accel capabilities
-            df.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
+            track.loc[i,"ay"] = min(vel**2/row["R"], AY) if row["R"] != 0 else 0 # actual accel
             if vel < vmax:
-                df.loc[i,"ax"], df.loc[i,"power_into_inverter"], df.loc[i, "motor_torque"], df.loc[i ,"motor_efficiency"] = accel_func(vel, df.loc[i,"ay"])
-                roots = np.roots([0.5*df.loc[i,"ax"], vel, -row["dist"]])
-                df.loc[i,"delta_t"] = min(roots) if min(roots) > 0 else max(roots)
-                df.loc[i,"delta_vel"] = min(df.loc[i,"ax"]*df.loc[i,"delta_t"], vmax-vel)
-                df.loc[i,"vel"] = vel + df.loc[i,"delta_vel"]
-                vel = df.loc[i,"vel"]
+                track.loc[i,"ax"], track.loc[i,"power_into_inverter"], track.loc[i, "motor_torque"], track.loc[i ,"motor_efficiency"] = accel_func(vel, track.loc[i,"ay"])
+                roots = np.roots([0.5*track.loc[i,"ax"], vel, -row["dist"]])
+                track.loc[i,"delta_t"] = min(roots) if min(roots) > 0 else max(roots)
+                track.loc[i,"delta_vel"] = min(track.loc[i,"ax"]*track.loc[i,"delta_t"], vmax-vel)
+                track.loc[i,"vel"] = vel + track.loc[i,"delta_vel"]
+                vel = track.loc[i,"vel"]
             else:
                 # car maxed out, no more accel
                 vel = vmax
-                df.loc[i,"vel"] = vel
-                df.loc[i,"delta_t"] = row["dist"]/vel
-                df.loc[i,"ax"], df.loc[i,"delta_vel"] = 0, 0
+                track.loc[i,"vel"] = vel
+                track.loc[i,"delta_t"] = row["dist"]/vel
+                track.loc[i,"ax"], track.loc[i,"delta_vel"] = 0, 0
         if is_reverse:
-            df["ax"]*=-1
-        return df
+            track["ax"]*=-1
+        return track
 
 def curvature(track_df):
     # radius of curvature and curvature vector for 2D or 3D curve
     # X - x,y column array
     # [L, R, k] = Cumulative arc length, radius of curvature, curvature vector
+
     track_df["L"], track_df["R"], track_df["kx"], track_df["ky"], track_df["kz"] = 0, 0, 0, 0, 0
+    coords_df = track_df[["x", "y", "z"]]
+
     previous_row = track_df.iloc[-1]
-    previous_coords_row = track_df.iloc[-1][["x", "y", "z"]]
+    previous_coords, this_coords = coords_df.iloc[-1], coords_df.iloc[0]
+
     for i, row in track_df.iloc[:-1].iterrows():
-        coords_row = row[["x", "y", "z"]]
-        track_df.loc[i,"R"], _, k = circumcenter(coords_row, previous_coords_row, track_df.iloc[i+1, :][["x", "y", "z"]])
+        next_coords = coords_df.iloc[i+1]
+        track_df.loc[i,"R"], _, k = circumcenter(this_coords, previous_coords, next_coords)
         track_df.loc[i,"kx"], track_df.loc[i,"ky"], track_df.loc[i,"kz"] = k
-        track_df.loc[i,"L"] = previous_row["L"] + np.linalg.norm(coords_row - previous_coords_row)
-        previous_row, previous_coords_row = row, coords_row
+        track_df.loc[i,"L"] = previous_row["L"] + np.linalg.norm(this_coords - previous_coords)
+        previous_row = row
+        previous_coords, this_coords = this_coords, next_coords
     
     N = track_df.shape[0]
-    track_df.loc[N-1,"R"], _, k = circumcenter(previous_coords_row, track_df[["x", "y", "z"]].iloc[N-1, :], track_df.iloc[0, :][["x", "y", "z"]])
+    track_df.loc[N-1,"R"], _, k = circumcenter(previous_coords, coords_df.iloc[N-1], coords_df.iloc[0])
     track_df.loc[N-1,"kx"], track_df.loc[N-1,"ky"], track_df.loc[N-1,"kz"] = k
-    track_df.loc[N-1,"L"] = track_df["L"].iloc[N-2] + np.linalg.norm(track_df[["x", "y", "z"]].iloc[N-1, :] - previous_coords_row)
+    track_df.loc[N-1,"L"] = track_df["L"].iloc[N-2] + np.linalg.norm(coords_df.iloc[N-1] - previous_coords)
     return track_df
 
 def circumcenter(A,B,C):

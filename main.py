@@ -50,7 +50,6 @@ def main():
     ### Example: One-off simulations ###
 
     start_time = time.time()
-    print()
 
     lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
     lapsim_racecar.prepare_GGV()
@@ -69,7 +68,7 @@ def main():
     # comp.autocross_sim.forward_sim_results.to_csv("results/forward-autocross_michigan_2019-concept_2023.csv")
     # comp.autocross_sim.reverse_sim_results.to_csv("results/reverse-autocross_michigan_2019-concept_2023.csv")
     
-    print()
+    print("\n=== Results ===")
     for event_name, event_time, event_points, event_results in zip(("Endurance", "Autocross", "Skidpad", "Acceleration"), times, points, results):
         event_str = event_name.ljust(18)
         time_str = " ".join(("time:", str(round(event_time, 2)), "s")).ljust(18)
@@ -80,7 +79,7 @@ def main():
         print(event_str, time_str, points_str, energy_str)
 
     elapsed_time = time.time() - start_time
-    print("\nresults in", round(elapsed_time, 2), "s")
+    print("\nSimulation took", round(elapsed_time, 2), "s")
 
 
 if __name__ == "__main__":

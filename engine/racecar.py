@@ -1,6 +1,5 @@
 from engine.magic_moment_method.solver_sweeper import generate_GGV
 import pandas as pd
-import numpy as np
 from scipy.optimize import fsolve
 
 class Racecar:
@@ -66,7 +65,7 @@ class Racecar:
     def max_vel(self):
         return self.params.max_motor_speed * self.params.rear_tire_radius / self.params.diff_radius * self.params.motor_radius
 
-    def accel(self, vel, lateral, is_forward = True):
+    def __accel(self, vel, lateral, is_forward = True):
         # Find closest velocities
         closest_vels = self.__get_nearest_velocities(vel)
 
@@ -86,6 +85,13 @@ class Racecar:
         efficiency_interpolated = l_e * (1 - weight) + u_e * weight
 
         return long_accel_interpolated, power_interpolated, torque_interpolated, efficiency_interpolated
+    
+    def accel_forward(self, vel, lateral):
+        return self.__accel(vel, lateral, True)
+    
+    def accel_backward(self, vel, lateral):
+        accel, _, _, _ = self.__accel(vel, lateral, False)
+        return accel * -1, 0, 0, 0
 
     def __interpolate_long_accel(self, vel, lateral_accel, is_forward):
         def decompose(point):
@@ -129,10 +135,6 @@ class Racecar:
             lower_vel = max(lower_than) if len(lower_than) > 0 else min(greater_than)
             upper_vel = min(greater_than) if len(greater_than) > 0 else max(lower_than)
         return [lower_vel, upper_vel]
-
-    def deccel(self, vel, lateral):
-        accel, _, _, _ = self.accel(vel, lateral, False)
-        return accel * -1, 0, 0, 0
 
     def lateral(self, vel):
         if vel < 0:
