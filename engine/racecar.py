@@ -150,23 +150,21 @@ class Racecar:
         return lat_accel_interpolated
 
     def max_vel_corner(self, radius):
-        try:
-            if radius > 80 or radius == 0:
-                return self.max_vel()
-            # TODO: FIX THIS BULLSHIT
-            if radius < 7:
-                radius = 7
+        if radius > 80 or radius == 0:
+            return self.max_vel()
             
-            vel_min, vel_max = 0, self.max_vel()
-            for i in range(16):
-                vel = (vel_min + vel_max) / 2.0
-                residual = (vel * vel / radius) - self.lateral(vel)
-                if residual < 0:
-                    vel_min = vel
-                else:
-                    vel_max = vel
-            vel_corner = (vel_min + vel_max) / 2.0
-        except:
-            print(radius)
-            raise Exception
+        # TODO: FIX THIS BULLSHIT
+        if radius < 7:
+            radius = 7
+        
+        vel_min, vel_max = 0, self.max_vel()
+        for i in range(16):
+            vel = (vel_min + vel_max) / 2.0
+            residual = (vel * vel / radius) - self.lateral(vel)
+            if residual < 0:
+                vel_min = vel
+            else:
+                vel_max = vel
+        vel_corner = (vel_min + vel_max) / 2.0
+
         return min(vel_corner, self.max_vel())
