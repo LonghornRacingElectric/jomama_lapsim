@@ -7,19 +7,15 @@ class Competition:
         accel_track = engine.Track("racing_lines/acceleration.csv", best_time = accel_times)
         skidpad_track = engine.Track(best_time = skidpad_times)
         
-        self.endurance_sim = engine.Simulation(self.racecar, endurance)
-        self.autocross_sim = engine.Simulation(self.racecar, autocross)
-        self.skidpad_sim = engine.Simulation(self.racecar, skidpad_track, is_skidpad = True)
-        self.acceleration_sim = engine.Simulation(self.racecar, accel_track)
+        self.endurance_sim = engine.Simulation("Endurance", self.racecar, endurance)
+        self.autocross_sim = engine.Simulation("Autocross", self.racecar, autocross)
+        self.skidpad_sim = engine.Simulation("Skidpad", self.racecar, skidpad_track, is_skidpad = True)
+        self.acceleration_sim = engine.Simulation("Acceleration", self.racecar, accel_track)
 
     def run(self):
-        print("Running Endurance Sim")
         result_endurance, time_e = self.endurance_sim.run()
-        print("Running Autocross Sim")
         results_autocross, time_ax = self.autocross_sim.run()
-        print("Running Skidpad Sim")
         results_skidpad, time_s = self.skidpad_sim.run()
-        print("Running Acceleration Sim")
         results_acceleration, time_a = self.acceleration_sim.run()
         
         times = [time_e, time_ax, time_s, time_a]

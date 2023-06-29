@@ -1,10 +1,16 @@
 from engine.magic_moment_method.solver_sweeper import generate_GGV
 import pandas as pd
 from scipy.optimize import fsolve
+import numpy as np
+from functools import lru_cache
 
 class Racecar:
     def __init__(self, racecar, existing_ggv_file = None):
-        self.ggv = pd.read_csv(existing_ggv_file) if existing_ggv_file else None
+        if existing_ggv_file:
+            self.ggv = pd.read_csv(existing_ggv_file)
+            self.prepare_GGV()
+        else:
+            self.ggv = pd.DataFrame()
         self.params = racecar
         try:
             self.initial_guesses = pd.read_csv("results/GGV_initial_guesses.csv")
@@ -21,14 +27,51 @@ class Racecar:
         
     def regenerate_GGV(self, sweep_range, mesh):
         self.ggv = generate_GGV(self.params, sweep_range, mesh, initial_guesses = self.initial_guesses)
+        self.prepare_GGV()
     
     def save_ggv(self, file_target):
         self.ggv.to_csv(file_target)
 
+    def prepare_GGV(self):
+        self.fast_ggv = {}
+        self.optimal_cornering = {"vel": [], "accel": []}
+        for vel in self.ggv["s_dot"].unique():
+            # prepare half-slices
+            vel_slice = self.ggv[self.ggv["s_dot"] == vel]
+            vel_slice_accel = vel_slice[vel_slice["vehicle_accelerations_NTB_0"] > 0].sort_values(by=["vehicle_accelerations_NTB_1"]).reset_index(drop=True)
+            vel_slice_decel = vel_slice[vel_slice["vehicle_accelerations_NTB_0"] <= 0].sort_values(by=["vehicle_accelerations_NTB_1"]).reset_index(drop=True)
+
+            # overlap half-slices for edge interpolation
+            if vel_slice_accel.iloc[0]["vehicle_accelerations_NTB_1"] < vel_slice_decel.iloc[0]["vehicle_accelerations_NTB_1"]:
+                vel_slice_decel.loc[-1] = vel_slice_accel.iloc[0].copy()
+                vel_slice_decel.index += 1
+                vel_slice_decel.sort_index(inplace=True) 
+            else:
+                vel_slice_accel.loc[-1] = vel_slice_decel.iloc[0].copy()
+                vel_slice_accel.index += 1
+                vel_slice_accel.sort_index(inplace=True) 
+            if vel_slice_accel.iloc[-1]["vehicle_accelerations_NTB_1"] > vel_slice_decel.iloc[-1]["vehicle_accelerations_NTB_1"]:
+                vel_slice_decel.loc[len(vel_slice_decel)] = vel_slice_accel.iloc[-1].copy()
+            else:
+                vel_slice_accel.loc[len(vel_slice_accel)] = vel_slice_decel.iloc[-1].copy()
+            
+            vel_slice_accel = vel_slice_accel.reset_index(drop=True)
+            vel_slice_decel = vel_slice_decel.reset_index(drop=True)
+            
+            # store half-slices and max in dictionary
+            self.fast_ggv[vel] = {
+                True: vel_slice_accel,
+                False: vel_slice_decel
+            }
+
+            self.optimal_cornering["vel"].append(vel)
+            self.optimal_cornering["accel"].append(vel_slice["vehicle_accelerations_NTB_1"].max())
+
+    @lru_cache(maxsize=1)
     def max_vel(self):
         return self.params.max_motor_speed * self.params.rear_tire_radius / self.params.diff_radius * self.params.motor_radius
 
-    def accel(self, vel, lateral, is_forward = True):
+    def __accel(self, vel, lateral, is_forward = True):
         # Find closest velocities
         closest_vels = self.__get_nearest_velocities(vel)
 
@@ -48,94 +91,49 @@ class Racecar:
         efficiency_interpolated = l_e * (1 - weight) + u_e * weight
 
         return long_accel_interpolated, power_interpolated, torque_interpolated, efficiency_interpolated
+    
+    def accel_forward(self, vel, lateral):
+        return self.__accel(vel, lateral, True)
+    
+    def accel_backward(self, vel, lateral):
+        accel, _, _, _ = self.__accel(vel, lateral, False)
+        return accel * -1, 0, 0, 0
 
     def __interpolate_long_accel(self, vel, lateral_accel, is_forward):
-        # step 1: find all intersection segments
-        velocity_slice_hull = self.ggv[self.ggv["s_dot"] == vel]
-        exactmatch = velocity_slice_hull[velocity_slice_hull["vehicle_accelerations_NTB_1"] == lateral_accel]
-        intersections = []
-        power_into_inverter = []
-        torque_in = []
-        e_in = []
-        if not exactmatch.empty:
-            return exactmatch["vehicle_accelerations_NTB_0"], exactmatch["power_into_inverter"], exactmatch["motor_torque"], exactmatch["motor_efficiency"]
-        else:
-            previous_point = velocity_slice_hull.iloc[-1]
-            for _, point in velocity_slice_hull.iterrows():
-                # check for intersection
-                if ((previous_point["vehicle_accelerations_NTB_1"] > lateral_accel and point["vehicle_accelerations_NTB_1"] < lateral_accel) or
-                    (previous_point["vehicle_accelerations_NTB_1"] < lateral_accel and point["vehicle_accelerations_NTB_1"] > lateral_accel)):
-                    y2, y1 = previous_point["vehicle_accelerations_NTB_1"], point["vehicle_accelerations_NTB_1"]
-                    x2, x1 = previous_point["vehicle_accelerations_NTB_0"], point["vehicle_accelerations_NTB_0"]
-                    if x1 != x2:
-                        m = (y2-y1)/(x2-x1)
-                        b = y1 - m * x1
-                        y_in = lateral_accel
-                        # y = mx + b
-                        x_in = (y_in - b)/m
+        def decompose(point):
+            return point["vehicle_accelerations_NTB_0"], point["power_into_inverter"], point["motor_torque"], point["motor_efficiency"]
 
-                        dist_1 = ((x_in - x1) ** 2 + (y_in - y1) ** 2)**0.5
-                        dist_2 = ((x_in - x2) ** 2 + (y_in - y2) ** 2)**0.5
-                    else:
-                        x_in = x1
-                        dist_1, dist_2 = 0.5, 0.5
+        ggv_half_slice: pd.DataFrame = self.fast_ggv[vel][is_forward]
 
-                    weight_2 = dist_1/ (dist_1 + dist_2)
-                    weight_1 = 1 - weight_2
-                    power_1 = point["power_into_inverter"] * weight_1
-                    power_2 = previous_point["power_into_inverter"] * weight_2
-                    power_into_inverter.append(power_1 + power_2)
+        lat_accels: pd.Series[float] = ggv_half_slice["vehicle_accelerations_NTB_1"]
+        i_upper = lat_accels.searchsorted(lateral_accel)
+        
+        # check if out of bounds
+        if i_upper == 0 or i_upper == len(lat_accels):
+            i = min(i_upper, len(lat_accels) - 1)
+            return decompose(ggv_half_slice.iloc[i])
 
-                    torque_1 = point["motor_torque"] * weight_1
-                    torque_2 = previous_point["motor_torque"] * weight_2
-                    torque_in.append(torque_1 + torque_2)
-
-                    e_1 = point["motor_efficiency"] * weight_1
-                    e_2 = previous_point["motor_efficiency"] * weight_2
-                    e_in.append(e_1 + e_2)
-
-                    intersections.append(x_in)
-                if len(intersections) > 1:
-                    break
-                previous_point = point
-        # step 2: interpolate from intersection points, calculated long accel given lateral accel
-        if is_forward:
-            if len(intersections) == 0:
-                index = velocity_slice_hull["vehicle_accelerations_NTB_1"].idxmax()
-                accel = velocity_slice_hull.loc[index]["vehicle_accelerations_NTB_0"]
-                power = velocity_slice_hull.loc[index]["power_into_inverter"]
-                torque = velocity_slice_hull.loc[index]["motor_torque"]
-                eff = velocity_slice_hull.loc[index]["motor_efficiency"]
-                return accel, power, torque, eff
-            index = intersections.index(max(intersections))
-            accel = max(intersections)
-            power = power_into_inverter[index]
-            torque = torque_in[index]
-            eff = e_in[index]
-            return accel, power, torque, eff
-        else:
-            if len(intersections) == 0:
-                index = velocity_slice_hull["vehicle_accelerations_NTB_1"].idxmin()
-                accel = velocity_slice_hull.loc[index]["vehicle_accelerations_NTB_0"]
-                power = velocity_slice_hull.loc[index]["power_into_inverter"]
-                torque = velocity_slice_hull.loc[index]["motor_torque"]
-                eff = velocity_slice_hull.loc[index]["motor_efficiency"]
-                return accel, power, torque, eff
-            index = intersections.index(min(intersections))
-            accel = min(intersections)
-            power = power_into_inverter[index]
-            torque = torque_in[index]
-            eff = e_in[index]
-            return accel, power, torque, eff
+        # check for exact match
+        if lat_accels.iloc[i_upper] == lateral_accel:
+            return decompose(ggv_half_slice.iloc[i_upper])
+        
+        # interpolate between two nearest points
+        i_lower = i_upper - 1
+        point_lower = ggv_half_slice.iloc[i_lower]
+        point_upper = ggv_half_slice.iloc[i_upper]
+        lat_lower = point_lower["vehicle_accelerations_NTB_1"]
+        lat_upper = point_upper["vehicle_accelerations_NTB_1"]
+        weight = (lateral_accel - lat_lower) / (lat_upper - lat_lower)
+        point_inter = (point_lower * (1-weight)) + (point_upper * weight)
+        return decompose(point_inter)
 
     def __get_nearest_velocities(self, vel):
-        exactmatch = self.ggv[self.ggv["s_dot"] == vel]
-        if not exactmatch.empty:
+        if vel in self.fast_ggv:
             return [vel, None]
         else:
             lower_than = []
             greater_than = []
-            for swept_vel in self.ggv["s_dot"].unique():
+            for swept_vel in self.fast_ggv.keys():
                 if vel < swept_vel:
                     greater_than.append(swept_vel)
                 else:
@@ -144,36 +142,29 @@ class Racecar:
             upper_vel = min(greater_than) if len(greater_than) > 0 else max(lower_than)
         return [lower_vel, upper_vel]
 
-    def deccel(self, vel, lateral):
-        accel, _, _, _ = self.accel(vel, lateral, False)
-        return accel * -1, 0, 0, 0
-
     def lateral(self, vel):
         if vel < 0:
             return 0
-        # Find closest velocities
-        closest_vels = self.__get_nearest_velocities(vel)
-        if closest_vels[1] is None:
-            return self.ggv[self.ggv["s_dot"] == vel]["vehicle_accelerations_NTB_1"].max()
-        # get max lateral acceleration for those velocities
-        max_lateral_accels = [self.ggv[self.ggv["s_dot"] == swept_vel]["vehicle_accelerations_NTB_1"].max() for swept_vel in closest_vels]
-        # weight max lateral accel based on closeness of velocity
-        weight = abs(vel - closest_vels[0])/(abs(vel - closest_vels[0]) + abs(vel - closest_vels[1]))
-        lateral_accel_interpolated = max_lateral_accels[0] * (1 - weight) + max_lateral_accels[1] * weight
-        return lateral_accel_interpolated
+        
+        lat_accel_interpolated = np.interp(vel, self.optimal_cornering["vel"], self.optimal_cornering["accel"])
+        return lat_accel_interpolated
 
     def max_vel_corner(self, radius):
-        try:
-            if radius > 80 or radius == 0:
-                return self.max_vel()
-            # TODO: FIX THIS BULLSHIT
-            if radius < 7:
-                radius = 7
-            def vel_solver(x):
-                velocity = x[0]
-                return velocity**2/radius-self.lateral(velocity)
-            vel_corner = fsolve(vel_solver, [radius])[0]
-        except:
-            print(radius)
-            raise Exception
-        return vel_corner if vel_corner < self.max_vel() else self.max_vel()
+        if radius > 80 or radius == 0:
+            return self.max_vel()
+            
+        # TODO: FIX THIS BULLSHIT
+        if radius < 7:
+            radius = 7
+        
+        vel_min, vel_max = 0, self.max_vel()
+        for i in range(16):
+            vel = (vel_min + vel_max) / 2.0
+            residual = (vel * vel / radius) - self.lateral(vel)
+            if residual < 0:
+                vel_min = vel
+            else:
+                vel_max = vel
+        vel_corner = (vel_min + vel_max) / 2.0
+
+        return min(vel_corner, self.max_vel())

@@ -1,3 +1,4 @@
+import time
 import engine
 import engine.magic_moment_method.vehicle_params as vehicles
 import numpy as np
@@ -48,7 +49,10 @@ def main():
     ####################################
     ### Example: One-off simulations ###
 
+    start_time = time.time()
+
     lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
+    lapsim_racecar.prepare_GGV()
     #lapsim_racecar.recreate_initial_guesses(sweep_range, mesh_size)
     #lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
     #lapsim_racecar.save_ggv("results/GGV.csv")
@@ -57,15 +61,26 @@ def main():
     comp = engine.Competition(lapsim_racecar, endurance_track, autocross_track,
                            skidpad_times, accel_times)
     results, points, times = comp.run()
-    energy = sum(results[0]["delta_t"] * results[0]["power_into_inverter"])
-    print(energy * 2.77778e-7)
+
     results[0].to_csv("results/endurance_michigan_2019-concept_2023.csv")
     results[1].to_csv("results/autocross_michigan_2019-concept_2023.csv")
     results[3].to_csv("results/acceleration-concept_2023.csv")
     # comp.autocross_sim.forward_sim_results.to_csv("results/forward-autocross_michigan_2019-concept_2023.csv")
     # comp.autocross_sim.reverse_sim_results.to_csv("results/reverse-autocross_michigan_2019-concept_2023.csv")
-    print(times)
-    print(points)
+    
+    print("\n=== Results ===")
+    for event_name, event_time, event_points, event_results in zip(("Endurance", "Autocross", "Skidpad", "Acceleration"), times, points, results):
+        event_str = event_name.ljust(18)
+        time_str = " ".join(("time:", str(round(event_time, 2)), "s")).ljust(18)
+        points_str = " ".join(("points:", str(round(event_points, 2)))).ljust(18)
+        energy_str = ""
+        if not event_results.empty:
+            energy_str = " ".join(("energy:", str(round(sum(event_results["delta_t"] * event_results["power_into_inverter"]) * 2.77778e-7, 4)), "kWh"))
+        print(event_str, time_str, points_str, energy_str)
+
+    elapsed_time = time.time() - start_time
+    print("\nSimulation took", round(elapsed_time, 2), "s")
+
 
 if __name__ == "__main__":
     main()
