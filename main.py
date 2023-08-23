@@ -69,7 +69,7 @@ def main():
     # 228 gear ratio sweep for pack voltages
     gear_ratio = [2.769230769, 2.923076923, 3.076923077, 3.230769231, 3.384615385, 3.538461538, 3.692307692, 3.846153846]
     # pack_voltage = 4.2*6*23 #cell voltage * segments * cells in series per segment [V]
-    lapsim_racecar.params.max_motor_speed = 5500*(2*np.pi/60) # [rad/s]
+    lapsim_racecar.params.max_motor_speed = 6500*(2*np.pi/60) # [rad/s]
     # ***make sure car mass and other parameters for this sweep are correct in the parameter file of the vehicle/configuration used!!
     results_df = pd.DataFrame(columns=["gear_ratio", "points", "times", "endurance_battery_capacity"])
     for index, g_r in enumerate(gear_ratio):
