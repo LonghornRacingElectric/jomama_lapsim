@@ -3,4 +3,4 @@
 **/venv/
 **.idea
 *.xlsx
-2017-2023 comp results.xlsx
+!2017-2023 comp results.xlsx
