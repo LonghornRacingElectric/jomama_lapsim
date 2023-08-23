@@ -5,7 +5,7 @@ import pandas as pd
 
 def main():
     # NOTE: this requires a GGV to be pre generated (second input)
-    lapsim_racecar = engine.Racecar(vehicles.Concept2024(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"))
+    lapsim_racecar = engine.Racecar(vehicles.Concept2024(motor_directory="engine/magic_moment_method/vehicle_params/Eff208.csv"))
     #lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
     endurance_track = engine.Track("racing_lines/en_mi_2019.csv", 1247.74, track_type="endurance")
     autocross_track = engine.Track("racing_lines/ax_mi_2019.csv", 50.008*.9)
@@ -67,10 +67,9 @@ def main():
 
 
     # 228 gear ratio sweep for pack voltages
-    gear_ratio = [3.692307692, 3.846153846, 4, 4.153846154, 4.307692308, 4.461538462, 
-                  4.615384615, 4.769230769, 4.923076923, 5.076923077]
+    gear_ratio = [4, 4.153846154, 4.307692308, 4.461538462, 4.615384615, 4.769230769, 4.923076923, 5.076923077, 5.230769231, 5.384615385]
     # pack_voltage = 4.2*6*23 #cell voltage * segments * cells in series per segment [V]
-    lapsim_racecar.params.max_motor_speed = 6500*(2*np.pi/60) # [rad/s]
+    lapsim_racecar.params.max_motor_speed = 7000*(2*np.pi/60) # [rad/s]
     # ***make sure car mass and other parameters for this sweep are correct in the parameter file of the vehicle/configuration used!!
     results_df = pd.DataFrame(columns=["gear_ratio", "points", "times", "endurance_battery_capacity"])
     for index, g_r in enumerate(gear_ratio):
