@@ -7,10 +7,10 @@ def main():
     # NOTE: this requires a GGV to be pre generated (second input)
     lapsim_racecar = engine.Racecar(vehicles.Concept2024(motor_directory="engine/magic_moment_method/vehicle_params/Eff208.csv"))
     #lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
-    endurance_track = engine.Track("racing_lines/en_mi_2019.csv", 1247.74, track_type="endurance")
-    autocross_track = engine.Track("racing_lines/ax_mi_2019.csv", 50.008*.9)
-    skidpad_times = 5.0497
-    accel_times = 3.69
+    endurance_track = engine.Track("racing_lines/en_mi_2019.csv", 1195, track_type="endurance")
+    autocross_track = engine.Track("racing_lines/ax_mi_2019.csv", 42.2)
+    skidpad_times = 4.54
+    accel_times = 2.95
 
     # NOTE: guesstimation based from TTC on maximum tire saturation slip angle
     sweep_range = {"body_slip": (-10 * np.pi / 180, 10 * np.pi / 180),
