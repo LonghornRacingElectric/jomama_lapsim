@@ -5,7 +5,7 @@ import pandas as pd
 
 def main():
     # NOTE: this requires a GGV to be pre generated (second input)
-    lapsim_racecar = engine.Racecar(vehicles.Concept2024(motor_directory="engine/magic_moment_method/vehicle_params/Eff208.csv"))
+    lapsim_racecar = engine.Racecar(vehicles.Concept2024(motor_directory="engine/magic_moment_method/vehicle_params/Eff228.csv"))
     #lapsim_racecar.ggv = pd.read_csv("results/GGV.csv")
     endurance_track = engine.Track("racing_lines/en_mi_2019.csv", 1265.38, track_type="endurance")
     autocross_track = engine.Track("racing_lines/ax_mi_2019.csv", 39.37)
@@ -65,10 +65,11 @@ def main():
     # print(points)
 
     gear_ratio = 4.0
-    lapsim_racecar.params.max_motor_speed = 7000*(2*np.pi/60) # [rad/s]
+    lapsim_racecar.params.max_motor_speed = 6500*(2*np.pi/60) # [rad/s]
     lapsim_racecar.params.max_vel = (lapsim_racecar.params.max_motor_speed/gear_ratio)*lapsim_racecar.params.rear_tire_radius
-    rear_cg_bias_sweep = list(np.arange(0.50,0.64, .02))
+    rear_cg_bias_sweep = list(np.arange(0.50,0.65, .01))
     # ***make sure car mass and other parameters for this sweep are correct in the parameter file of the vehicle/configuration used!!
+    # ***this includes motor directory file!
     results_df = pd.DataFrame(columns=["rear_cg_bias", "points", "times"])
     for index, cg in enumerate(rear_cg_bias_sweep):
         lapsim_racecar.params.cg_bias = cg
