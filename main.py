@@ -64,10 +64,7 @@ def main():
     # print(times)
     # print(points)
 
-    gear_ratio = 4.0
-    lapsim_racecar.params.max_motor_speed = 6500*(2*np.pi/60) # [rad/s]
-    lapsim_racecar.params.max_vel = (lapsim_racecar.params.max_motor_speed/gear_ratio)*lapsim_racecar.params.rear_tire_radius
-    rear_cg_bias_sweep = list(np.arange(0.50,0.65, .01))
+    max_vel_sweep = list(np.arange(50,65, 3))
     # ***make sure car mass and other parameters for this sweep are correct in the parameter file of the vehicle/configuration used!!
     # ***this includes motor directory file!
     results_df = pd.DataFrame(columns=["rear_cg_bias", "points", "times"])
