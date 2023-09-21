@@ -82,8 +82,8 @@ def main():
         print(times)
         print(points)
         results_df.loc[index] = [vel, points, times, energy]
-        vel_results[0].to_csv(f"results/cg_{str(vel)}-endurance-concept_2024.csv")
-    results_df.to_csv("results/cg_sweep-concept_2024.csv")
+        vel_results[0].to_csv(f"results/vel_{str(vel)}-endurance-concept_2024.csv")
+    results_df.to_csv("results/vel_sweep-concept_2024.csv")
 
 
 #     # 208 gear ratio sweep for both pack voltages
