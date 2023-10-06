@@ -64,26 +64,45 @@ def main():
     # print(times)
     # print(points)
 
-    max_vel_sweep = list(np.arange(50,71, 3))
     # ***make sure car mass and other parameters for this sweep are correct in the parameter file of the vehicle/configuration used!!
     # ***this includes motor directory file!
-    results_df = pd.DataFrame(columns=["rear_cg_bias", "points", "times", 'end_energy_expenditure'])
-    for index, vel in enumerate(max_vel_sweep):
-        lapsim_racecar.params.max_vel = vel * (0.44704) # m/s
-        lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
+    results_df = pd.DataFrame(columns=["power_limit", "points", "times", 'end_energy_expenditure'])
+    lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
+    lapsim_racecar.params.power_limit = 40000
+    # If a new racing line is needed (i.e. trackwidth changes), enable these lines
+    #endurance_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
+    #autocross_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
 
-        # If a new racing line is needed (i.e. trackwidth changes), enable these lines
-        #endurance_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
-        #autocross_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
+    results, points, times = engine.Competition(lapsim_racecar, endurance_track, autocross_track,
+                        skidpad_times, accel_times).run()
+    energy = sum(results[0]["delta_t"] * results[0]["power_into_inverter"])
+    print(times)
+    print(points)
+    results_df.loc[0] = ['40kW', points, times, energy]
+    results[0].to_csv("results/40kW-endurance-concept_2024.csv")
+    results_df.to_csv("results/40kW-concept_2024.csv")
 
-        vel_results, points, times = engine.Competition(lapsim_racecar, endurance_track, autocross_track,
-                            skidpad_times, accel_times).run()
-        energy = sum(vel_results[0]["delta_t"] * vel_results[0]["power_into_inverter"])
-        print(times)
-        print(points)
-        results_df.loc[index] = [vel, points, times, energy]
-        vel_results[0].to_csv(f"results/vel_{str(vel)}-endurance-concept_2024.csv")
-    results_df.to_csv("results/vel_sweep-concept_2024.csv")
+
+    # max_vel_sweep = list(np.arange(50,71, 3))
+    # # ***make sure car mass and other parameters for this sweep are correct in the parameter file of the vehicle/configuration used!!
+    # # ***this includes motor directory file!
+    # results_df = pd.DataFrame(columns=["rear_cg_bias", "points", "times", 'end_energy_expenditure'])
+    # for index, vel in enumerate(max_vel_sweep):
+    #     lapsim_racecar.params.max_vel = vel * (0.44704) # m/s
+    #     lapsim_racecar.regenerate_GGV(sweep_range, mesh_size)
+
+    #     # If a new racing line is needed (i.e. trackwidth changes), enable these lines
+    #     #endurance_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
+    #     #autocross_track.regenerate_racing_line(lapsim_racecar.params.front_trackwidth)
+
+    #     vel_results, points, times = engine.Competition(lapsim_racecar, endurance_track, autocross_track,
+    #                         skidpad_times, accel_times).run()
+    #     energy = sum(vel_results[0]["delta_t"] * vel_results[0]["power_into_inverter"])
+    #     print(times)
+    #     print(points)
+    #     results_df.loc[index] = [vel, points, times, energy]
+    #     vel_results[0].to_csv(f"results/vel_{str(vel)}-endurance-concept_2024.csv")
+    # results_df.to_csv("results/vel_sweep-concept_2024.csv")
 
 
 #     # 208 gear ratio sweep for both pack voltages
